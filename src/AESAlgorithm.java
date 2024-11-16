@@ -1,7 +1,7 @@
 import java.util.Arrays;
 import java.util.Base64;
 
-public class AESAlgorithm {
+public class AESAlgorithm implements EncryptionAlgorithm {
 	// AES 128
     private static final int Nb = 4; // 列数（固定为 4）
     private static final int Nk = 4; // 密钥长度（128 位密钥 -> 4 个 32 位字）
@@ -10,8 +10,6 @@ public class AESAlgorithm {
     
     public AESAlgorithm(byte[] key) {
         this.key = key;
-        // 你可以在这里进行密钥初始化或检查等操作
-        System.out.println("AES key initialized.");
     }
 
     

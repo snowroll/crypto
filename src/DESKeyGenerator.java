@@ -1,9 +1,5 @@
 // ref url: https://www.cnblogs.com/LoganChen/p/11432092.html
 
-import java.util.Arrays;
-
-import javax.security.auth.kerberos.KerberosCredMessage;
-
 public class DESKeyGenerator { // √
 	/* PC-1 表置换定义 */
     private static final int[] PC1 = {
@@ -40,7 +36,6 @@ public class DESKeyGenerator { // √
         // 将 56 位密钥分为 C 和 D 两个 28 位部分
         System.arraycopy(Kp, 0, C, 0, 28);
         System.arraycopy(Kp, 28, D, 0, 28);
-        Utils.printInt(C);
         //Utils.printInt(D);
 
         // 16 轮生成子密钥

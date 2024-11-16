@@ -85,6 +85,7 @@ public class EncryptionApp extends JFrame {
                     outputArea.setText("File encrypted successfully. Encrypted file saved as: " + file.getName() + ".enc");
                 } else {
                     String encryptedText = encryptText(algorithm, key, input);
+                    print("encrypt done!");
                     outputArea.setText("Encrypted Text: \n" + encryptedText);
                 }
             } catch (Exception ex) {
@@ -115,48 +116,51 @@ public class EncryptionApp extends JFrame {
 
     // Encryption for text
     private String encryptText(String algorithm, String key, String input) throws Exception {
-        Cipher cipher = initCipher(algorithm, key, Cipher.ENCRYPT_MODE);
-        byte[] encrypted = cipher.doFinal(input.getBytes());
+        EncryptionAlgorithm cipher = initCipher(algorithm, key);
+        byte[] encrypted = cipher.encrypt(input.getBytes());
         return Base64.getEncoder().encodeToString(encrypted);
     }
 
     // Decryption for text
     private String decryptText(String algorithm, String key, String input) throws Exception {
-        Cipher cipher = initCipher(algorithm, key, Cipher.DECRYPT_MODE);
-        byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(input));
+    	EncryptionAlgorithm cipher = initCipher(algorithm, key);
+        byte[] decrypted = cipher.decrypt(Base64.getDecoder().decode(input));
         return new String(decrypted);
     }
 
     // Encryption for files
     private byte[] encryptFile(String algorithm, String key, File inputFile) throws Exception {
-        Cipher cipher = initCipher(algorithm, key, Cipher.ENCRYPT_MODE);
+        Object cipher = initCipher(algorithm, key, Cipher.ENCRYPT_MODE);
         byte[] fileData = Files.readAllBytes(inputFile.toPath());
         return cipher.doFinal(fileData);
     }
 
     // Decryption for files
     private byte[] decryptFile(String algorithm, String key, File inputFile) throws Exception {
-        Cipher cipher = initCipher(algorithm, key, Cipher.DECRYPT_MODE);
+        EncryptionAlgorithm cipher = initCipher(algorithm, key);
         byte[] fileData = Files.readAllBytes(inputFile.toPath());
-        return cipher.doFinal(fileData);
+        return cipher.decrypt(fileData);
     }
 
     // Initialize Cipher with the chosen algorithm and key
     // 从这里开始修改
-    private Cipher initCipher(String algorithm, String key, int mode) throws Exception {
+    private EncryptionAlgorithm initCipher(String algorithm, String key) throws Exception {
     	String encrypted = "";
     	if (algorithm == "DES") {
-    		DESAlgorithm des = new DESAlgorithm();
-            encrypted = des.encrypt(key);
-            System.out.print(encrypted);
+    		CBC Cbc = new CBC("DES", key.getBytes()); 
+    		return Cbc;
+    	}
+    	else if (algorithm == "AES") {
+    		CBC Cbc = new CBC("AES", key.getBytes()); 
+    		return Cbc;
     	}
     	// todo here
         SecretKey secretKey = new SecretKeySpec(formatKey(algorithm, key), algorithm);
-        Cipher cipher = Cipher.getInstance(algorithm);
-        cipher.init(mode, secretKey);
-        return cipher;
+        DESAlgorithm tmp = new DESAlgorithm(key.getBytes());
+        return tmp;
     }
-
+    
+    
     // Format key to required size
     private byte[] formatKey(String algorithm, String key) {
         int keyLength = algorithm.equals("AES") ? 16 : 8;
@@ -170,5 +174,9 @@ public class EncryptionApp extends JFrame {
             EncryptionApp app = new EncryptionApp();
             app.setVisible(true);
         });
+    }
+    
+    public static void print(String text) {
+    	System.out.print(text);
     }
 }

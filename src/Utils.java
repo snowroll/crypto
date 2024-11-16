@@ -22,7 +22,6 @@ public class Utils {
 	    // 输出字节数组的二进制表示
 	    for (byte b : array) {
 	        // 使用 String.format 格式化输出 8 位二进制，不足位数前补 0
-	        //System.out.print(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0') + '-');
 	        System.out.printf("%08d ", Integer.parseInt(Integer.toBinaryString(b & 0xFF)));
 	    }
 	    System.out.println();
@@ -30,16 +29,25 @@ public class Utils {
     
     public static void printIntsBin(int[] array) {
     	for (int i : array) {
-    		// System.out.print(String.format("%8s ", Integer.toBinaryString(i & 0xFFFF)).replace(' ', '0'));
-    		System.out.printf("%08d ", Integer.parseInt(Integer.toBinaryString(i & 0xFF)));
+    		printIntBin(i);
     	}
     	System.out.println();
     }
     
+    public static void printIntBin(int i) {
+    	// System.out.printf("%32s%n", Integer.toBinaryString(i & 0xFFFFFFFF));
+    	// 获取 32 位二进制字符串并填充 '0'
+        String binaryString = String.format("%32s", Integer.toBinaryString(i & 0xFFFFFFFF)).replace(' ', '0');
+
+        // 使用正则表达式，每 4 位插入一个空格
+        String formattedString = binaryString.replaceAll("(.{4})", "$1 ");
+
+        // 打印格式化后的字符串
+        System.out.println(formattedString.trim());
+    }
+    
     public static void printLongBin(long[] array) {
     	for (long i : array) {
-    		//System.out.println(String.format("%8s ", Long.toBinaryString(i & 0xFFFFFFFFL)).replace(' ', '0'));
-    		//System.out.printf("%08d ", Integer.parseInt(Integer.toBinaryString(b & 0xFF)));
     		System.out.printf("%64s%n", Long.toBinaryString(i & 0xFFFFFFFFL));
     	}
     	System.out.println();

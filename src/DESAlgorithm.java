@@ -6,24 +6,60 @@ import javax.print.attribute.Size2DSyntax;
 import javax.security.auth.Refreshable;
 
 // Data Encryption Standard 
-public class DESAlgorithm {
+public class DESAlgorithm implements EncryptionAlgorithm {
+	public DESAlgorithm(byte[] key) {
+		byte[] desKey = generateDESKey(key);
+    	subKeys = DESKeyGenerator.generateSubKeys(desKey);
+    	print("hhhh");
+    }
+	
+	public byte[] encrypt(byte[] plaintext) {  // √
+        byte[] block = initialPermutation(plaintext);
+        int left = getLeftHalf(block);
+        int right = getRightHalf(block);
 
-    // 这里是 DES 加密的示例实现
-    // 实际上需要自己实现 DES 加密逻辑
-    public String encrypt(String plainText) {
-        // 简单的示例，替代为你自己的加密逻辑
-        return "DES加密后的数据: " + plainText;
+        for (int i = 0; i < 16; i++) {
+            int temp = right;
+            right = left ^ feistelFunction(right, subKeys[i]);
+            left = temp;
+        }
+
+        byte[] result = combineHalves(right, left);
+        return finalPermutation(result);
+    }
+	
+	public byte[] decrypt(byte[] ciphertext) {
+    	byte[] block = initialPermutation(ciphertext);
+    	int right = getLeftHalf(block);
+    	int left  = getRightHalf(block);  // encrypt output: R16L16
+    	
+    	Utils.printIntBin(left);
+    	for (int i = 15; i >= 0; i--) {
+            int temp = left;
+            left = right ^ feistelFunction(left, subKeys[i]);
+            right = temp;
+        }
+    	
+    	
+    	byte[] result = combineHalves(left, right);
+    	return finalPermutation(result);
     }
 
-    // 你可以添加其他方法，例如解密
-    public String decrypt(String cipherText) {
-        // 解密逻辑
-        return "DES解密后的数据: " + cipherText;
-    }
-    
-    
+	public static byte[] generateDESKey(byte[] keyBytes) {
+        // 如果密钥长度不足 8 字节，则进行补齐
+        if (keyBytes.length < 8) {
+            byte[] paddedKey = new byte[8];
+            System.arraycopy(keyBytes, 0, paddedKey, 0, keyBytes.length);
+            // 使用 0x00 补齐剩余部分
+            Arrays.fill(paddedKey, keyBytes.length, 8, (byte) 0x00);
+            return paddedKey;
+        }
 
-    // 初始置换表 IP
+        // 如果密钥长度超过 8 字节，则截断
+        return Arrays.copyOf(keyBytes, 8);
+    }
+	
+	// 初始置换表 IP
     private static final int[] IP = {
         58, 50, 42, 34, 26, 18, 10, 2,
         60, 52, 44, 36, 28, 20, 12, 4,
@@ -132,28 +168,6 @@ public class DESAlgorithm {
 
     // 16 轮子密钥
     private long[] subKeys = new long[16];
-
-    public DESAlgorithm(byte[] key) {
-    	Utils.printBytesHex(key);
-    	subKeys = DESKeyGenerator.generateSubKeys(key);
-    	Utils.printLongBin(subKeys);
-    }
-
-
-    public byte[] encrypt(byte[] plaintext) {  // √
-        byte[] block = initialPermutation(plaintext);
-        int left = getLeftHalf(block);
-        int right = getRightHalf(block);
-
-        for (int i = 0; i < 16; i++) {
-            int temp = right;
-            right = left ^ feistelFunction(right, subKeys[i]);
-            left = temp;
-        }
-
-        byte[] result = combineHalves(right, left);
-        return finalPermutation(result);
-    }
     
     private byte[] initialPermutation(byte[] data) {
         byte[] output = new byte[8];  // 64 位分布在 8 个字节中
@@ -294,7 +308,8 @@ public class DESAlgorithm {
         return blocks;
     }
     
-    public static boolean unitTestDecrypt() {
+    
+    public static boolean unitTestEncrypt() {
 	    byte[] input = {
     		(byte) 0x01, (byte) 0x23, (byte) 0x45, (byte) 0x67,
             (byte) 0x89, (byte) 0xAB, (byte) 0xCD, (byte) 0xEF
@@ -317,6 +332,31 @@ public class DESAlgorithm {
 	    	System.out.println("Oops, there are some mistakes in the AES Decryption!");
 	    }
 	    return isEqual;
+    } 
+    
+    public static boolean unitTestDecrypt() {
+	    byte[] input = {
+    		(byte) 0x85, (byte) 0xE8, (byte) 0x13, (byte) 0x54,
+	  	    (byte) 0x0F, (byte) 0x0A, (byte) 0xB4, (byte) 0x05,
+	  	};
+	    byte[] key = {
+    		(byte) 0x13, (byte) 0x34, (byte) 0x57, (byte) 0x79,
+            (byte) 0x9B, (byte) 0xBC, (byte) 0xDF, (byte) 0xF1
+	  	};
+	    byte[] correctRes = {
+    		(byte) 0x01, (byte) 0x23, (byte) 0x45, (byte) 0x67,
+            (byte) 0x89, (byte) 0xAB, (byte) 0xCD, (byte) 0xEF
+	    };
+	    DESAlgorithm des = new DESAlgorithm(key);
+	    byte[] plaintext = des.decrypt(input);
+	    boolean isEqual = Arrays.equals(correctRes, plaintext);
+	    if (isEqual) {
+	    	System.out.println("Congratulation! DES Decryption is correct!");
+	    }
+	    else {
+	    	System.out.println("Oops, there are some mistakes in the AES Decryption!");
+	    }
+	    return isEqual;
     }
 
 
@@ -330,14 +370,23 @@ public class DESAlgorithm {
             (byte) 0x89, (byte) 0xAB, (byte) 0xCD, (byte) 0xEF
         };
         		
-        // "Hello, DES!".getBytes();
+        String key0 = "123";
+        String input = "helloworld";
         
-        DESAlgorithm des = new DESAlgorithm(key);
-        byte[] ciphertext = des.encrypt(plaintext);
-        Utils.printBytesHex(ciphertext);
+        DESAlgorithm des = new DESAlgorithm(key0.getBytes());
+        byte[] ciphertext = des.encrypt(input.getBytes());
+        
+        // des.unitTestEncrypt();
+        // des.unitTestDecrypt();
+        // byte[] ciphertext = des.encrypt(plaintext);
+        // byte[] detext     = des.decrypt(ciphertext);
+        
         
         String ciphertextBase64 = Base64.getEncoder().encodeToString(ciphertext);
 		System.out.println("Ciphertext (Base64): " + ciphertextBase64);
-
+    }
+    
+    public static void print(String text) {
+    	System.out.print(text);
     }
 }
