@@ -1,4 +1,10 @@
-public class DESKeyGenerator {
+// ref url: https://www.cnblogs.com/LoganChen/p/11432092.html
+
+import java.util.Arrays;
+
+import javax.security.auth.kerberos.KerberosCredMessage;
+
+public class DESKeyGenerator { // √
 	/* PC-1 表置换定义 */
     private static final int[] PC1 = {
 		57, 49, 41, 33, 25, 17,  9,
@@ -29,10 +35,13 @@ public class DESKeyGenerator {
 
         // 初始 PC-1 置换
         int[] Kp = permutePC1(key);
+        // Utils.printInt(Kp);
 
         // 将 56 位密钥分为 C 和 D 两个 28 位部分
         System.arraycopy(Kp, 0, C, 0, 28);
         System.arraycopy(Kp, 28, D, 0, 28);
+        Utils.printInt(C);
+        //Utils.printInt(D);
 
         // 16 轮生成子密钥
         for (int i = 0; i < 16; i++) {
@@ -53,7 +62,7 @@ public class DESKeyGenerator {
     private static int[] permutePC1(byte[] key) {
         int[] Kp = new int[56];
         for (int i = 0; i < 56; i++) {
-            int bit = (key[PC1[i] / 8] >> (7 - (PC1[i] % 8))) & 0x01;
+            int bit = (key[(PC1[i]-1) / 8] >> (7 - ((PC1[i]-1) % 8))) & 0x01;
             Kp[i] = bit;
         }
         return Kp;
@@ -73,5 +82,32 @@ public class DESKeyGenerator {
             subKey |= CD[PC2[i] - 1];
         }
         return subKey;
+    }
+    
+    public static boolean unitTestKeyGen() {
+	    byte[] key = {
+    		(byte) 0x13, (byte) 0x34, (byte) 0x57, (byte) 0x79,
+            (byte) 0x9B, (byte) 0xBC, (byte) 0xDF, (byte) 0xF1
+	  	};
+	    long key16 = 0b110010110011110110001011000011100001011111110101L;
+	    long[] subkeys = DESKeyGenerator.generateSubKeys(key);
+	    boolean isEqual = subkeys[15] == key16;
+	    if (isEqual) {
+	    	System.out.println("Congratulation! DES KeyGenerator is correct!");
+	    }
+	    else {
+	    	System.out.println("Oops, there are some mistakes in the DES KeyGenerator!");
+	    }
+	    return isEqual;
+    }
+    
+    public static void main(String[] args) {
+    	byte[] key = {
+            (byte) 0x13, (byte) 0x34, (byte) 0x57, (byte) 0x79,
+            (byte) 0x9B, (byte) 0xBC, (byte) 0xDF, (byte) 0xF1
+        };
+    	long[] subkeys = generateSubKeys(key);
+    	
+    	unitTestKeyGen();
     }
 }

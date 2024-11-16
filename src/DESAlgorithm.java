@@ -140,7 +140,7 @@ public class DESAlgorithm {
     }
 
 
-    public byte[] encrypt(byte[] plaintext) {
+    public byte[] encrypt(byte[] plaintext) {  // √
         byte[] block = initialPermutation(plaintext);
         int left = getLeftHalf(block);
         int right = getRightHalf(block);
@@ -293,17 +293,48 @@ public class DESAlgorithm {
 
         return blocks;
     }
+    
+    public static boolean unitTestDecrypt() {
+	    byte[] input = {
+    		(byte) 0x01, (byte) 0x23, (byte) 0x45, (byte) 0x67,
+            (byte) 0x89, (byte) 0xAB, (byte) 0xCD, (byte) 0xEF
+	  	};
+	    byte[] key = {
+    		(byte) 0x13, (byte) 0x34, (byte) 0x57, (byte) 0x79,
+            (byte) 0x9B, (byte) 0xBC, (byte) 0xDF, (byte) 0xF1
+	  	};
+	    byte[] correctRes = {
+    		(byte) 0x85, (byte) 0xE8, (byte) 0x13, (byte) 0x54,
+	  	    (byte) 0x0F, (byte) 0x0A, (byte) 0xB4, (byte) 0x05,
+	    };
+	    DESAlgorithm des = new DESAlgorithm(key);
+	    byte[] ciphertext = des.encrypt(input);
+	    boolean isEqual = Arrays.equals(correctRes, ciphertext);
+	    if (isEqual) {
+	    	System.out.println("Congratulation! DES Encryption is correct!");
+	    }
+	    else {
+	    	System.out.println("Oops, there are some mistakes in the AES Decryption!");
+	    }
+	    return isEqual;
+    }
 
 
     public static void main(String[] args) {
-    	 byte[] key = {
+    	byte[] key = {
             (byte) 0x13, (byte) 0x34, (byte) 0x57, (byte) 0x79,
             (byte) 0x9B, (byte) 0xBC, (byte) 0xDF, (byte) 0xF1
         };
-        byte[] plaintext = "Hello, DES!".getBytes();
+        byte[] plaintext = {
+    		(byte) 0x01, (byte) 0x23, (byte) 0x45, (byte) 0x67,
+            (byte) 0x89, (byte) 0xAB, (byte) 0xCD, (byte) 0xEF
+        };
+        		
+        // "Hello, DES!".getBytes();
         
         DESAlgorithm des = new DESAlgorithm(key);
         byte[] ciphertext = des.encrypt(plaintext);
+        Utils.printBytesHex(ciphertext);
         
         String ciphertextBase64 = Base64.getEncoder().encodeToString(ciphertext);
 		System.out.println("Ciphertext (Base64): " + ciphertextBase64);
