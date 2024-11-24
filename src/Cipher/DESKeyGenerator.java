@@ -1,4 +1,5 @@
 // ref url: https://www.cnblogs.com/LoganChen/p/11432092.html
+package Cipher;
 
 public class DESKeyGenerator { // √
 	/* PC-1 表置换定义 */

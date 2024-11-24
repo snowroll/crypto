@@ -1,3 +1,4 @@
+package Hash;
 import java.nio.charset.StandardCharsets;
 
 // https://www.ietf.org/rfc/rfc1321.txt

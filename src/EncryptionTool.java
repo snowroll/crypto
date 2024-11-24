@@ -1,7 +1,14 @@
 import javax.swing.*;
+
+import Cipher.RSAAlgorithm;
+import utils.RandomKey;
+import utils.Utils;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.math.BigInteger;
 
 public class EncryptionTool {
 
@@ -66,6 +73,8 @@ public class EncryptionTool {
         rsaPanel.add(generateRSAKeysButton);
 
         generateRSAKeysButton.addActionListener(e -> {
+        	BigInteger[] rsaKeyPair = RSAAlgorithm.RSAKeyGenerate(2048);
+        	
             // 弹框选择保存目录
             JFileChooser directoryChooser = new JFileChooser();
             directoryChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -78,13 +87,34 @@ public class EncryptionTool {
                     JOptionPane.showMessageDialog(null, "私钥名称不能为空！");
                     return;
                 }
+                
+                try {
+                    // 生成文件路径
+                    String privateKeyPath = directory + "/" + privateKeyName + "";
+                    String publicKeyPath = directory + "/" + privateKeyName + ".pub";
 
-                // 模拟生成密钥对逻辑
-                String privateKeyPath = directory + "/" + privateKeyName + ".key";
-                String publicKeyPath = directory + "/" + privateKeyName + ".pub";
+                    // 公私钥写入文件
+                    Utils.writeKeyToFile(publicKeyPath, rsaKeyPair[0], "PUBLIC KEY");
+                    Utils.writeKeyToFile(privateKeyPath, rsaKeyPair[1], "PRIVATE KEY");                 
 
-                JOptionPane.showMessageDialog(null, "公私钥已生成:\n私钥: " + privateKeyPath + "\n公钥: " + publicKeyPath);
+                    // 弹出提示框
+                    JOptionPane.showMessageDialog(null, 
+                        "公私钥已生成:\n私钥: " + privateKeyPath + "\n公钥: " + publicKeyPath);
+
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(null, 
+                        "密钥写入文件失败: " + e1.getMessage(), 
+                        "错误", 
+                        JOptionPane.ERROR_MESSAGE);
+                }
+
+                //JOptionPane.showMessageDialog(null, "公私钥已生成:\n私钥: " + privateKeyPath + "\n公钥: " + publicKeyPath);
             }
+        });
+        
+        importRSAKeyButton.addActionListener(e -> {
+        	int i = 0;
         });
 
         // 加密算法选择面板
@@ -114,8 +144,16 @@ public class EncryptionTool {
         });
 
         generateKeyButton.addActionListener(e -> {
-            String algorithm = (String) algorithmCombo.getSelectedItem();
-            keyField.setText("根据种子生成的" + algorithm + "密钥");
+        	String algorithm = (String) algorithmCombo.getSelectedItem();
+        	long seed = 123456L;
+
+            if ("DES".equals(algorithm)) {
+                String desKey = RandomKey.generateDESKey(seed); // 自定义的生成 DES 密钥的函数
+                keyField.setText(desKey);
+            } else if ("AES".equals(algorithm)) {
+                String aesKey = RandomKey.generateAESKey(seed); // 自定义的生成 AES 密钥的函数
+                keyField.setText(aesKey);
+            } 
         });
 
         importKeyButton.addActionListener(e -> {
@@ -151,13 +189,25 @@ public class EncryptionTool {
         importSignatureKeyButton0.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-            	signatureKeyField0.setText(fileChooser.getSelectedFile().getAbsolutePath());
+            	String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            	try {
+					String keyString = Utils.loadRSAKey(filePath);
+					signatureKeyField0.setText(keyString);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
             }
         });
         importSignatureKeyButton1.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-            	signatureKeyField1.setText(fileChooser.getSelectedFile().getAbsolutePath());
+            	String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            	try {
+					String keyString = Utils.loadRSAKey(filePath);
+					signatureKeyField1.setText(keyString);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
             }
         });
         
@@ -170,7 +220,19 @@ public class EncryptionTool {
         buttonPanel.add(decryptButton);
         buttonPanel.add(clearButton);
 
-        encryptButton.addActionListener(e -> JOptionPane.showMessageDialog(frame, "执行加密操作 (功能未实现)"));
+        encryptButton.addActionListener(e -> {
+        	String message = inputContentField.getText();
+        	String encryAlgorithm = (String)algorithmCombo.getSelectedItem();
+        	String encryptKey = keyField.getText();
+        	String hashAlgorithm = (String)signatureAlgorithmCombo.getSelectedItem();
+        	String mySignatureKey = signatureKeyField0.getText();
+        	String otherSignatureKey = signatureKeyField1.getText();
+        	
+        	
+        	
+    	});
+        
+        
         decryptButton.addActionListener(e -> JOptionPane.showMessageDialog(frame, "执行解密操作 (功能未实现)"));
         clearButton.addActionListener(e -> {
             inputContentField.setText("");

@@ -1,3 +1,12 @@
+package utils;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Base64;
+
 public class Utils {
 	// 调试输出state
     public static void printState(byte[][] state) {
@@ -69,4 +78,25 @@ public class Utils {
     	System.out.println();
     }
     
+    // 写入密钥到文件
+    public static void writeKeyToFile(String filePath, BigInteger key, String keyType) throws IOException {
+        File file = new File(filePath);
+        try (FileWriter writer = new FileWriter(file)) {
+        	String base64Key = Base64.getEncoder().encodeToString(key.toByteArray());
+            writer.write("-----BEGIN " + keyType + "-----\n");
+            writer.write(base64Key);
+            writer.write("\n-----END " + keyType + "-----");
+        }
+    }
+    
+    // 从 Base64 文件读取 BigInteger 密钥
+    public static String loadRSAKey(String filePath) throws IOException {
+    	String base64Key = new String(Files.readAllBytes(Paths.get(filePath)))
+    								.replace("-----BEGIN PRIVATE KEY-----", "")
+					                .replace("-----END PRIVATE KEY-----", "")
+					                .replace("-----BEGIN PUBLIC KEY-----", "")
+					                .replace("-----END PUBLIC KEY-----", "")
+					                .replace("\n", "").trim();
+        return base64Key;
+    }
 }

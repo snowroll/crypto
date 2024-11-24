@@ -1,9 +1,12 @@
+package Cipher;
 import java.awt.image.Kernel;
 import java.util.Arrays;
 import java.util.Base64;
 
 import javax.print.attribute.Size2DSyntax;
 import javax.security.auth.Refreshable;
+
+import utils.Utils;
 
 // Data Encryption Standard 
 public class DESAlgorithm implements EncryptionAlgorithm {

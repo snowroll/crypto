@@ -1,3 +1,4 @@
+package Hash;
 import java.awt.print.Printable;
 import java.util.ArrayList;
 
