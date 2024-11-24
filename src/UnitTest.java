@@ -62,14 +62,19 @@ public class UnitTest {
         byte[] plaintext = "Hello World!".getBytes();
 
         // 测试 AES CBC
-        CBC aesCbc = new CBC("DES", key, iv);
-        testEncryption(aesCbc, "DES", key, iv, plaintext);
+        CBC aesCbc = new CBC("DES", key);
+        testEncryption(aesCbc, "DES", key, plaintext);
     }
 
     /**
      * 验证自定义加密类与 Java 内置加密是否一致。
      */
-    private static void testEncryption(CBC customCipher, String algorithm, byte[] key, byte[] iv, byte[] plaintext) {
+    private static void testEncryption(CBC customCipher, String algorithm, byte[] key,  byte[] plaintext) {
+    	byte[] iv = "12345678".getBytes();
+    	if (algorithm == "AES") {
+    		iv = "1234567890abcdef".getBytes();
+    	}
+    	
         System.out.println("\nTesting " + algorithm + " CBC Mode:");
 
         // 使用自定义 CBC 类进行加密

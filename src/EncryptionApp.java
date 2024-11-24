@@ -130,7 +130,7 @@ public class EncryptionApp extends JFrame {
 
     // Encryption for files
     private byte[] encryptFile(String algorithm, String key, File inputFile) throws Exception {
-        Object cipher = initCipher(algorithm, key, Cipher.ENCRYPT_MODE);
+        Object cipher = initCipher(algorithm, key);
         byte[] fileData = Files.readAllBytes(inputFile.toPath());
         return cipher.doFinal(fileData);
     }
