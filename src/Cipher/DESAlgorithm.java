@@ -1,4 +1,4 @@
-package Cipher;
+package cipher;
 import java.awt.image.Kernel;
 import java.util.Arrays;
 import java.util.Base64;
@@ -13,7 +13,6 @@ public class DESAlgorithm implements EncryptionAlgorithm {
 	public DESAlgorithm(byte[] key) {
 		byte[] desKey = generateDESKey(key);
     	subKeys = DESKeyGenerator.generateSubKeys(desKey);
-    	print("hhhh");
     }
 	
 	public byte[] encrypt(byte[] plaintext) {  // √
@@ -36,7 +35,7 @@ public class DESAlgorithm implements EncryptionAlgorithm {
     	int right = getLeftHalf(block);
     	int left  = getRightHalf(block);  // encrypt output: R16L16
     	
-    	Utils.printIntBin(left);
+    	// Utils.printIntBin(left);
     	for (int i = 15; i >= 0; i--) {
             int temp = left;
             left = right ^ feistelFunction(left, subKeys[i]);

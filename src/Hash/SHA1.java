@@ -8,10 +8,10 @@ public class SHA1 {
         0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0
     };
 
-    public static String sha1(String message) {
-        byte[] messageBytes = message.getBytes();
-        int[] paddedMessage = padMessage(messageBytes);
-        printPaddedMessageHex(paddedMessage);
+    public static String computeHash(byte[] message) {
+        //byte[] messageBytes = message.getBytes();
+        int[] paddedMessage = padMessage(message);
+        // printPaddedMessageHex(paddedMessage);
         int[] hash = H.clone();
 
         for (int i = 0; i < paddedMessage.length / 16; i++) {
@@ -101,7 +101,7 @@ public class SHA1 {
     public static void main(String[] args) {
         String text = "Hello, world!";
         
-        String sha1Hash = sha1(text);
+        String sha1Hash = computeHash(text.getBytes());
         System.out.println("SHA-1 Hash: " + sha1Hash);
     }
 }

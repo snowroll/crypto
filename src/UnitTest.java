@@ -2,7 +2,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import Cipher.CBC;
+import cipher.CBC;
 
 import java.util.Arrays;
 import java.util.Base64;

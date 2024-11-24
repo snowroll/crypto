@@ -1,4 +1,4 @@
-package Cipher;
+package cipher;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -6,9 +6,9 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 
 public class RSAAlgorithm {
-    private BigInteger n;      // n = p * q
-    private BigInteger e;      // Public exponent     
-    private BigInteger d;      // Private exponent
+//    private BigInteger n;      // n = p * q
+//    private BigInteger e;      // Public exponent     
+//    private BigInteger d;      // Private exponent
 
     // 密钥生成
     public static BigInteger[] RSAKeyGenerate(int bitLength) {
@@ -29,54 +29,46 @@ public class RSAAlgorithm {
 
         // 计算私钥 d，使得 d * e ≡ 1 (mod φ(n))
         BigInteger d = e.modInverse(phi);
-        BigInteger[] keyPair = new BigInteger[]{n, d};
-        return keyPair;
+        BigInteger[] rsaKeys = new BigInteger[]{e, d, n};
+        return rsaKeys;
     }
     
-    public RSAAlgorithm() {
-    	BigInteger[] keyPair = RSAKeyGenerate(2048);
-    	n = keyPair[0];
-    	d = keyPair[1];
-    }
+//    public RSAAlgorithm() {
+//    	BigInteger[] keyPair = RSAKeyGenerate(2048);
+//    	n = keyPair[0];
+//    	d = keyPair[1];
+//    }
 
     // 加密方法
-    public BigInteger encrypt(BigInteger plaintext, BigInteger n) {
+    public BigInteger encrypt(BigInteger plaintext, BigInteger e, BigInteger n) {
         return plaintext.modPow(e, n);
     }
 
     // 解密方法
-    public BigInteger decrypt(BigInteger ciphertext, BigInteger d) {
+    public BigInteger decrypt(BigInteger ciphertext, BigInteger d, BigInteger n) {
         return ciphertext.modPow(d, n);
     }
 
-    // 获取公钥
-    public BigInteger getPublicKey() {
-        return e;
-    }
-
-    // 获取模数 n
-    public BigInteger getModulus() {
-        return n;
-    }
 
     public static void main(String[] args) {
         // 创建 RSA 实例，密钥长度为 2048 位
+    	BigInteger[] rsaKeys = RSAAlgorithm.RSAKeyGenerate(2048);
+    	BigInteger e = rsaKeys[0];
+    	BigInteger d = rsaKeys[1];
+    	BigInteger n = rsaKeys[2];
         RSAAlgorithm rsa = new RSAAlgorithm();
 
-        // 打印公钥和模数
-        System.out.println("Public Key (e): " + rsa.getPublicKey());
-        System.out.println("Modulus (n): " + rsa.getModulus());
 
         // 原始消息
         String message = "Hello, RSA!";
         BigInteger plaintext = new BigInteger(message.getBytes());
 
         // 加密
-        BigInteger ciphertext = rsa.encrypt(plaintext, rsa.n);
+        BigInteger ciphertext = rsa.encrypt(plaintext, e, n);
         System.out.println("Encrypted message: " + ciphertext);
 
         // 解密
-        BigInteger decrypted = rsa.decrypt(ciphertext, rsa.d);
+        BigInteger decrypted = rsa.decrypt(ciphertext, d, n);
         String decryptedMessage = new String(decrypted.toByteArray());
         System.out.println("Decrypted message: " + decryptedMessage);
     }

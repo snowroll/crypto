@@ -1,4 +1,4 @@
-package Cipher;
+package cipher;
 public interface EncryptionAlgorithm {
     // 加密方法
     byte[] encrypt(byte[] data) ;

@@ -1,4 +1,4 @@
-package Cipher;
+package cipher;
 import java.util.Arrays;
 import java.util.Base64;
 

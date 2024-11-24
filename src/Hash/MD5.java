@@ -51,9 +51,9 @@ public class MD5 {
     }
     
     
-    public static String computeMd5(String msg) {
-    	byte[] msgBytes = msg.getBytes(StandardCharsets.UTF_8);
-    	byte[] M = padMessage(msgBytes);
+    public static String computeHash(byte[] msg) {
+//    	byte[] msgBytes = msg.getBytes(StandardCharsets.UTF_8); 	
+    	byte[] M = padMessage(msg);
     	int N = M.length;
     	
     	int a = A, b = B, c = C, d = D;
@@ -140,8 +140,9 @@ public class MD5 {
         String message = "hello";
         byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
     	byte[] M = padMessage(msgBytes);
+    	
         
-        System.out.println("MD5(\"" + message + "\") = " + computeMd5(message));
+        System.out.println("MD5(\"" + message + "\") = " + computeHash(msgBytes));
     }
 }
 

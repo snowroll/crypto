@@ -79,24 +79,62 @@ public class Utils {
     }
     
     // 写入密钥到文件
-    public static void writeKeyToFile(String filePath, BigInteger key, String keyType) throws IOException {
+    public static void writeRSAKeyToFile(String filePath, BigInteger e, BigInteger n, String keyType) throws IOException {
         File file = new File(filePath);
         try (FileWriter writer = new FileWriter(file)) {
-        	String base64Key = Base64.getEncoder().encodeToString(key.toByteArray());
+        	String base64E = Base64.getEncoder().encodeToString(e.toByteArray());
+            String base64N = Base64.getEncoder().encodeToString(n.toByteArray());
+            
             writer.write("-----BEGIN " + keyType + "-----\n");
-            writer.write(base64Key);
-            writer.write("\n-----END " + keyType + "-----");
+            writer.write(base64E + "\n");
+            writer.write(base64N + "\n");
+            writer.write("-----END "   + keyType + "-----");
         }
     }
     
     // 从 Base64 文件读取 BigInteger 密钥
     public static String loadRSAKey(String filePath) throws IOException {
-    	String base64Key = new String(Files.readAllBytes(Paths.get(filePath)))
-    								.replace("-----BEGIN PRIVATE KEY-----", "")
+    	String RSAkeys = new String(Files.readAllBytes(Paths.get(filePath)))
+    								.replace("-----BEGIN PRIVATE KEY-----\n", "")
 					                .replace("-----END PRIVATE KEY-----", "")
-					                .replace("-----BEGIN PUBLIC KEY-----", "")
+					                .replace("-----BEGIN PUBLIC KEY-----\n", "")
 					                .replace("-----END PUBLIC KEY-----", "")
-					                .replace("\n", "").trim();
-        return base64Key;
+					                .trim().replace("\n", " ");
+        return RSAkeys;
+    }
+    
+    // BigInteger 转 Base64 字符串
+    public static String bigIntegerToBase64(BigInteger bigInteger) {
+        byte[] bytes = bigInteger.toByteArray(); // 转换为字节数组
+        return Base64.getEncoder().encodeToString(bytes); // 编码为 Base64 字符串
+    }
+
+    // Base64 字符串 转 BigInteger
+    public static BigInteger base64ToBigInteger(String base64String) {
+        byte[] bytes = Base64.getDecoder().decode(base64String); // 解码 Base64 字符串为字节数组
+        return new BigInteger(bytes); // 从字节数组还原 BigInteger
+    }
+    
+    // 字符串转 Base64 字符串
+    public static String stringToBase64(String input) {
+        byte[] bytes = input.getBytes(); // 将字符串转换为字节数组
+        return Base64.getEncoder().encodeToString(bytes); // 编码为 Base64 字符串
+    }
+
+    // Base64 字符串转普通字符串
+    public static String base64ToString(String base64String) {
+        byte[] bytes = Base64.getDecoder().decode(base64String); // 解码 Base64 字符串为字节数组
+        return new String(bytes); // 将字节数组转换为字符串
+    }
+    
+    // Base64 字符串 转 byte[]
+    public static byte[] base64ToByteArray(String base64String) {
+        byte[] bytes = Base64.getDecoder().decode(base64String); // 解码 Base64 字符串为字节数组
+        return bytes; 
+    }
+    
+    // 字节数组转 Base64 字符串
+    public static String byteArrayToBase64(byte[] byteArray) {
+        return Base64.getEncoder().encodeToString(byteArray); // 使用 Base64 编码字节数组
     }
 }
