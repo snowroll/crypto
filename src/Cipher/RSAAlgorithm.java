@@ -5,10 +5,12 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
-public class RSAAlgorithm {
+public class RSAAlgorithm implements EncryptionAlgorithm {
 //    private BigInteger n;      // n = p * q
 //    private BigInteger e;      // Public exponent     
 //    private BigInteger d;      // Private exponent
+	private BigInteger rk;  // base64 of exponent:module
+	private BigInteger rn;
 
     // 密钥生成
     public static BigInteger[] RSAKeyGenerate(int bitLength) {
@@ -33,19 +35,33 @@ public class RSAAlgorithm {
         return rsaKeys;
     }
     
-//    public RSAAlgorithm() {
-//    	BigInteger[] keyPair = RSAKeyGenerate(2048);
-//    	n = keyPair[0];
-//    	d = keyPair[1];
-//    }
+    public RSAAlgorithm(byte[] key) {  // base64("e n").getbytes()
+    	String base64EspaceN = new String(key);
+    	String[] keyParts = base64EspaceN.split(" ");
+    	rk = utils.Utils.base64ToBigInteger(keyParts[0]);  // 这里e 和 d 统一表示为rk
+    	rn = utils.Utils.base64ToBigInteger(keyParts[1]);
+    }
+    
+    // 做统一适配
+    public byte[] encrypt(byte[] data) {  // 加密
+    	BigInteger inputMessage = new BigInteger(data);
+    	BigInteger outputResult = inputMessage.modPow(rk, rn);
+    	return outputResult.toByteArray();
+    }
+    
+    public byte[] decrypt(byte[] data) {  // 解密
+    	BigInteger inputMessage = new BigInteger(data);
+    	BigInteger outputResult = inputMessage.modPow(rk, rn);
+    	return outputResult.toByteArray();
+    }
 
     // 加密方法
-    public BigInteger encrypt(BigInteger plaintext, BigInteger e, BigInteger n) {
+    public static BigInteger encrypt(BigInteger plaintext, BigInteger e, BigInteger n) {
         return plaintext.modPow(e, n);
     }
 
     // 解密方法
-    public BigInteger decrypt(BigInteger ciphertext, BigInteger d, BigInteger n) {
+    public static BigInteger decrypt(BigInteger ciphertext, BigInteger d, BigInteger n) {
         return ciphertext.modPow(d, n);
     }
 
@@ -56,7 +72,6 @@ public class RSAAlgorithm {
     	BigInteger e = rsaKeys[0];
     	BigInteger d = rsaKeys[1];
     	BigInteger n = rsaKeys[2];
-        RSAAlgorithm rsa = new RSAAlgorithm();
 
 
         // 原始消息
@@ -64,11 +79,11 @@ public class RSAAlgorithm {
         BigInteger plaintext = new BigInteger(message.getBytes());
 
         // 加密
-        BigInteger ciphertext = rsa.encrypt(plaintext, e, n);
+        BigInteger ciphertext = RSAAlgorithm.encrypt(plaintext, e, n);
         System.out.println("Encrypted message: " + ciphertext);
 
         // 解密
-        BigInteger decrypted = rsa.decrypt(ciphertext, d, n);
+        BigInteger decrypted = RSAAlgorithm.decrypt(ciphertext, d, n);
         String decryptedMessage = new String(decrypted.toByteArray());
         System.out.println("Decrypted message: " + decryptedMessage);
     }

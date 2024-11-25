@@ -1,6 +1,7 @@
 import javax.swing.*;
 
 import cipher.EncryptionAlgorithm;
+import cipher.EncryptionAlgorithmFactory;
 import cipher.RSAAlgorithm;
 import cipher.CBC;
 import Hash.MD5;
@@ -14,16 +15,15 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.lang.classfile.instruction.NewMultiArrayInstruction;
 import java.math.BigInteger;
 import java.util.Base64;
 import java.util.HashMap;
 
 
 // todo
-// 1. 已修改公私钥存储结构，修改导入方式
-// 2. 加密hash的解密仍然有问题，修改
-// 3. 抽象逻辑为函数
-// 4. 密钥加密传输还没搞
+// 1. 密钥加密传输还没搞
+// 2. 密钥生成的随机种子问题
 
 public class EncryptionTool {
 
@@ -109,6 +109,61 @@ public class EncryptionTool {
                     JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    public static String computeHashString(String algorithm, byte[] data) {
+    	String hashValue;
+    	if (algorithm == "MD5") {
+    		hashValue = MD5.computeHash(data);
+    	}
+    	else {
+    		hashValue = SHA1.computeHash(data);
+    	}
+    	return hashValue;
+    }
+    
+    public static void encryptionProcess(String inputMessage, String selectedEncryptionAlgorithm, 
+    		String encryptionKey, String selectedHashAlgorithm, String myPrivateKey, String peerPublicKey) {
+    	// hash签名计算
+    	byte[] msgBytes = inputMessage.getBytes();
+    	String hashValue = computeHashString(selectedHashAlgorithm, msgBytes);
+    	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", myPrivateKey);
+    	byte[] encryptedHash = hashCipher.encrypt(hashValue.getBytes());
+    	
+    	byte[] combinedMessageBytes = utils.Utils.joinWithBase64Separator(msgBytes, encryptedHash, " ");
+    	
+    	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
+    	byte[] encryptedMessage = cipher.encrypt(combinedMessageBytes);
+    	String encryptedMessageBase64 = utils.Utils.byteArrayToBase64(encryptedMessage);
+    	
+    	System.out.println(encryptedMessageBase64);
+    	
+    	
+    }
+    
+    public static void decryptionProcess(String inputMessage, String selectedEncryptionAlgorithm, 
+    		String encryptionKey, String selectedHashAlgorithm, String myPrivateKey, String peerPublicKey) {
+    	// step1 解密
+    	byte[] msgBytes = utils.Utils.base64ToByteArray(inputMessage);
+    	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
+    	byte[] decryptedMessage = cipher.decrypt(msgBytes);
+    	
+    	// step2 
+    	byte[][] combinedMessages = utils.Utils.splitByBase64Separator(decryptedMessage, " ");
+    	byte[] message = combinedMessages[0];
+    	byte[] encryptedHash = combinedMessages[1];
+    	System.out.println(new String(message));
+    	
+    	// 校验hash值
+    	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", peerPublicKey);
+    	byte[] decryptedHash = hashCipher.decrypt(encryptedHash);
+    	String decryptedHashString = new String(decryptedHash);
+    	String recomputedHash = computeHashString(selectedHashAlgorithm, message);
+    	
+    	System.out.print(decryptedHashString + "\n" + recomputedHash + "\n");
+    	if (decryptedHashString.equals(recomputedHash)) {
+    		System.out.print("it is good");
+    	}
     }
 
     private static void createAndShowGUI() {
@@ -274,117 +329,31 @@ public class EncryptionTool {
         buttonPanel.add(clearButton);
 
         encryptButton.addActionListener(e -> {
-        	String message = inputContentField.getText();
-        	String encryptAlgorithm = (String)algorithmCombo.getSelectedItem();
-        	String encryptKey = keyField.getText();
-        	String hashAlgorithm = (String)signatureAlgorithmCombo.getSelectedItem();
-        	String mySignatureKey = signatureKeyField0.getText();
-        	String otherSignatureKey = signatureKeyField1.getText();
-        	
-        	// 计算md5
-        	String hashValue;
-        	byte[] msgBytes = message.getBytes();
-        	
-        	if (hashAlgorithm == "MD5") {
-        		hashValue = MD5.computeHash(msgBytes);
-        	}
-        	else {
-        		hashValue = SHA1.computeHash(msgBytes);
-        	}
-        	
-            BigInteger hashBigInteger = new BigInteger(hashValue.getBytes());
-            BigInteger RKa = utils.Utils.base64ToBigInteger(mySignatureKey);
-            BigInteger UKa = utils.Utils.base64ToBigInteger(otherSignatureKey);
-        	
-        	RSAAlgorithm rsaCipher = new RSAAlgorithm();
-        	BigInteger encryptedHash =  rsaCipher.encrypt(hashBigInteger, RKa, UKa);
-        	BigInteger decryptedHash = rsaCipher.decrypt(encryptedHash, UKa, RKa);
-        	String encryptedHashBase64 = utils.Utils.bigIntegerToBase64(encryptedHash);
-        	String msgBase64 = utils.Utils.stringToBase64(message);
-        	
-        	System.out.println("Hash BigInteger: " + hashBigInteger.toString());
-        	System.out.println("Hash BigInteger decryption: " + encryptedHash.toString());
-        	//System.out.println("RKa: " + RKa.toString());
-        	System.out.println("Encrypted Hash: " + encryptedHash.toString());
-        	System.out.println("Encrypted Hash Base64: " + encryptedHashBase64);
-        	System.out.println("Message Base64: " + msgBase64);
-        	
-        	String combinedMsg = msgBase64 + ":" + encryptedHashBase64;
-        	
-        	
-        	
-        	EncryptionAlgorithm cipher;
-        	
-        	
-        	if (encryptAlgorithm == "DES") {
-        		CBC cbc = new CBC("DES", utils.Utils.base64ToByteArray(encryptKey));
-        		byte[] encryptedBytes = cbc.encrypt(combinedMsg.getBytes());
-        		String encryptedRes = utils.Utils.byteArrayToBase64(encryptedBytes);
-        		showEncryptionResult(encryptedRes);
-        	} else if (encryptAlgorithm == "AES") {
-        		
-        	} else if (encryptAlgorithm == "RSA") {
-        		
-        	}
-        	
+        	String inputMessage = inputContentField.getText();
+        	String selectedEncryptionAlgorithm = (String) algorithmCombo.getSelectedItem();
+        	String encryptionKey = keyField.getText();
+        	String selectedHashAlgorithm = (String) signatureAlgorithmCombo.getSelectedItem();
+        	String myPrivateKey = signatureKeyField0.getText();
+        	String peerPublicKey = signatureKeyField1.getText();	
+        	encryptionProcess(inputMessage, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, myPrivateKey, peerPublicKey);
         	
     	});
         
         
         decryptButton.addActionListener(e -> {
-        	String message = inputContentField.getText();
-        	String encryptAlgorithm = (String)algorithmCombo.getSelectedItem();
-        	String encryptKey = keyField.getText();
-        	String hashAlgorithm = (String)signatureAlgorithmCombo.getSelectedItem();
-        	String mySignatureKey = signatureKeyField0.getText();
-        	String otherSignatureKey = signatureKeyField1.getText();
-        	
-        	if (encryptAlgorithm == "DES") {
-        		CBC cbc = new CBC("DES", utils.Utils.base64ToByteArray(encryptKey));
-        		byte[] decryptedBytes = cbc.decrypt(utils.Utils.base64ToByteArray(message));
-        		String decryptedCombinedString = new String(decryptedBytes);
-        		String[] partStrings = decryptedCombinedString.split(":");
-        		String decryptedMsgBase64 = partStrings[0];
-        		String encryptedHashBase64 = partStrings[1];
-        		String decryptedMsg = utils.Utils.base64ToString(decryptedMsgBase64);
-        		byte[] msg = utils.Utils.base64ToByteArray(decryptedMsgBase64);
-        		
-        		// 重新计算hash值
-        		String hashValue;
-            	if (hashAlgorithm == "MD5") {
-            		hashValue = MD5.computeHash(msg);
-            	}
-            	else {
-            		hashValue = SHA1.computeHash(msg);
-            	}
-            	
-            	
-            	BigInteger encryptedHashBigInteger = utils.Utils.base64ToBigInteger(encryptedHashBase64);
-            	RSAAlgorithm rsaCipher = new RSAAlgorithm();
-            	BigInteger UKa = utils.Utils.base64ToBigInteger(otherSignatureKey);
-            	BigInteger decryptedHash =  rsaCipher.decrypt(encryptedHashBigInteger, UKa, UKa);
-            	String originHash = decryptedHash.toString(16);
-            	
-            	System.out.println("---------------------------------------------");
-            	System.out.println("Hash BigInteger: " + decryptedHash.toString());
-            	//System.out.println("RKa: " + RKa.toString());
-            	System.out.println("Encrypted Hash: " + decryptedHash.toString());
-            	System.out.println("Encrypted Hash Base64: " + encryptedHashBase64);
-            	//System.out.println("Message Base64: " + msgBase64);
-            	
-        		showEncryptionResult(decryptedMsg + "\n" + hashValue + "\n" + originHash);
-        	} else if (encryptAlgorithm == "AES") {
-        		
-        	} else if (encryptAlgorithm == "RSA") {
-        		
-        	}
-        	
+        	String inputMessage = inputContentField.getText();
+        	String selectedEncryptionAlgorithm = (String) algorithmCombo.getSelectedItem();
+        	String encryptionKey = keyField.getText();
+        	String selectedHashAlgorithm = (String) signatureAlgorithmCombo.getSelectedItem();
+        	String myPrivateKey = signatureKeyField0.getText();
+        	String peerPublicKey = signatureKeyField1.getText();	
+        	decryptionProcess(inputMessage, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, myPrivateKey, peerPublicKey);
         });
+        
         clearButton.addActionListener(e -> {
             inputContentField.setText("");
             fileSelectButton.setText("选择文件");
             fileSelectButton.setEnabled(false);
-            rsaKeyPathField.setText("");
             keyField.setText("");
             signatureKeyField0.setText("");
             signatureKeyField1.setText("");

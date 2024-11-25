@@ -30,10 +30,10 @@ public class CBC implements EncryptionAlgorithm {
         this.key = formatKey(key, this.BLOCK_SIZE);
         //this.iv = generateRandomIV();
         // 处理 IV 长度
-//        if (iv == null || iv.length != this.BLOCK_SIZE) {
-//            throw new IllegalArgumentException("IV must be " + this.BLOCK_SIZE + " bytes.");
-//        }
-//        this.iv = iv;
+        //  if (iv == null || iv.length != this.BLOCK_SIZE) {
+        //    throw new IllegalArgumentException("IV must be " + this.BLOCK_SIZE + " bytes.");
+        // }
+        // this.iv = iv;
         
         switch (algorithm.toUpperCase()) {
 	        case "AES":
@@ -45,17 +45,17 @@ public class CBC implements EncryptionAlgorithm {
         }
     }
     
-    public CBC(byte[] key, byte[] iv) {
-        if (key.length != BLOCK_SIZE) {
-            throw new IllegalArgumentException("Key must be 16 bytes (128 bits).");
-        }
-        if (iv.length != BLOCK_SIZE) {
-            throw new IllegalArgumentException("IV must be 16 bytes (128 bits).");
-        }
-        this.key = key;
-        this.iv = iv;
-        this.encryptor = new AESAlgorithm(this.key);
-    }
+//    public CBC(byte[] key, byte[] iv) {
+//        if (key.length != BLOCK_SIZE) {
+//            throw new IllegalArgumentException("Key must be 16 bytes (128 bits).");
+//        }
+//        if (iv.length != BLOCK_SIZE) {
+//            throw new IllegalArgumentException("IV must be 16 bytes (128 bits).");
+//        }
+//        this.key = key;
+//        this.iv = iv;
+//        this.encryptor = new AESAlgorithm(this.key);
+//    }
     
 
     // 格式化密钥（填充或截断）

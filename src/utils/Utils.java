@@ -3,6 +3,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
@@ -137,4 +138,39 @@ public class Utils {
     public static String byteArrayToBase64(byte[] byteArray) {
         return Base64.getEncoder().encodeToString(byteArray); // 使用 Base64 编码字节数组
     }
+    
+    // 将两个字节数组转换为Base64，再拼接并加入分隔符
+    public static byte[] joinWithBase64Separator(byte[] array1, byte[] array2, String separator) {
+        // 将字节数组转换为Base64字符串
+        String base64Array1 = Base64.getEncoder().encodeToString(array1);
+        String base64Array2 = Base64.getEncoder().encodeToString(array2);
+        
+        // 拼接Base64字符串并加上分隔符
+        String combinedString = base64Array1 + separator + base64Array2;
+        
+        // 返回拼接后的字节数组
+        return combinedString.getBytes(StandardCharsets.UTF_8);
+    }
+
+    // 反解析字节数组，分割成两个Base64字符串，再转换为字节数组
+    public static byte[][] splitByBase64Separator(byte[] byteArray, String separator) {
+        // 将字节数组转换为字符串
+        String combinedString = new String(byteArray, StandardCharsets.UTF_8);
+        
+        // 按照分隔符分割字符串
+        String[] parts = combinedString.split(separator);
+        
+        if (parts.length != 2) {
+            // 如果分割后的数组长度不为2，说明格式错误
+            return new byte[][] {new byte[0], new byte[0]};
+        }
+        
+        // 将Base64字符串解码为字节数组
+        byte[] part1 = Base64.getDecoder().decode(parts[0]);
+        byte[] part2 = Base64.getDecoder().decode(parts[1]);
+        
+        // 返回两个字节数组
+        return new byte[][] {part1, part2};
+    }
+
 }
