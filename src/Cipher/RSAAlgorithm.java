@@ -4,6 +4,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class RSAAlgorithm implements EncryptionAlgorithm {
 //    private BigInteger n;      // n = p * q
@@ -11,6 +14,7 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
 //    private BigInteger d;      // Private exponent
 	private BigInteger rk;  // base64 of exponent:module
 	private BigInteger rn;
+	private int chunkSize; // 块大小
 
     // 密钥生成
     public static BigInteger[] RSAKeyGenerate(int bitLength) {
@@ -38,8 +42,11 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
     public RSAAlgorithm(byte[] key) {  // base64("e n").getbytes()
     	String base64EspaceN = new String(key);
     	String[] keyParts = base64EspaceN.split(" ");
+    	System.out.println(keyParts[0]);
+    	System.out.println(keyParts[1]);
     	rk = utils.Utils.base64ToBigInteger(keyParts[0]);  // 这里e 和 d 统一表示为rk
     	rn = utils.Utils.base64ToBigInteger(keyParts[1]);
+    	chunkSize = 2048;
     }
     
     // 做统一适配
@@ -49,11 +56,13 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
     	return outputResult.toByteArray();
     }
     
+    
     public byte[] decrypt(byte[] data) {  // 解密
     	BigInteger inputMessage = new BigInteger(data);
     	BigInteger outputResult = inputMessage.modPow(rk, rn);
     	return outputResult.toByteArray();
     }
+
 
     // 加密方法
     public static BigInteger encrypt(BigInteger plaintext, BigInteger e, BigInteger n) {
@@ -64,7 +73,31 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
     public static BigInteger decrypt(BigInteger ciphertext, BigInteger d, BigInteger n) {
         return ciphertext.modPow(d, n);
     }
+    
 
+    // 辅助方法：添加填充字节，确保块大小固定
+    private static void addPaddedBytes(List<Byte> target, byte[] chunk, int blockSize) {
+        int paddingSize = blockSize - chunk.length;
+        for (int i = 0; i < paddingSize; i++) {
+            target.add((byte) 0x00);
+        }
+        for (byte b : chunk) {
+            target.add(b);
+        }
+    }
+
+    // 辅助方法：去除填充字节
+    private static List<Byte> removePadding(byte[] chunk) {
+        List<Byte> result = new ArrayList<>();
+        boolean started = false;
+        for (byte b : chunk) {
+            if (b != 0 || started) {
+                started = true;
+                result.add(b);
+            }
+        }
+        return result;
+    }
 
     public static void main(String[] args) {
         // 创建 RSA 实例，密钥长度为 2048 位
@@ -86,5 +119,6 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
         BigInteger decrypted = RSAAlgorithm.decrypt(ciphertext, d, n);
         String decryptedMessage = new String(decrypted.toByteArray());
         System.out.println("Decrypted message: " + decryptedMessage);
+
     }
 }

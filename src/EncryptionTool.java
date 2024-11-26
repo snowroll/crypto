@@ -14,9 +14,12 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.io.IOException;
 import java.lang.classfile.instruction.NewMultiArrayInstruction;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.HashMap;
 
@@ -26,14 +29,21 @@ import java.util.HashMap;
 // 2. 密钥生成的随机种子问题
 
 public class EncryptionTool {
+	private static String inputType = "String";
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(EncryptionTool::createAndShowGUI);
     }
     
-    public static void showEncryptionResult(String encryptedResult) {
+    public static void showResult(String Result, String type) {
         // 创建弹出窗口
-        JFrame frame = new JFrame("加密结果");
+    	String typeString;
+    	if (type.equals("encrypt")) {
+    		typeString = "加密";
+    	} else {
+    		typeString = "解密";
+    	}
+        JFrame frame = new JFrame(typeString + "结果");
         frame.setSize(400, 200);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setLocationRelativeTo(null);
@@ -43,7 +53,7 @@ public class EncryptionTool {
         panel.setLayout(new BorderLayout(10, 10));
 
         // 添加加密结果文本框（不可编辑）
-        JTextArea resultTextArea = new JTextArea(encryptedResult);
+        JTextArea resultTextArea = new JTextArea(Result);
         resultTextArea.setEditable(false);
         resultTextArea.setLineWrap(true);
         resultTextArea.setWrapStyleWord(true);
@@ -54,12 +64,12 @@ public class EncryptionTool {
         JButton copyButton = new JButton("复制到剪切板");
         copyButton.addActionListener(e -> {
             // 将加密结果复制到剪切板
-            StringSelection selection = new StringSelection(encryptedResult);
+            StringSelection selection = new StringSelection(Result);
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             clipboard.setContents(selection, null);
 
             // 提示已复制
-            JOptionPane.showMessageDialog(frame, "加密结果已复制到剪切板！");
+            JOptionPane.showMessageDialog(frame, typeString + "结果已复制到剪切板！");
         });
 
         panel.add(copyButton, BorderLayout.SOUTH);
@@ -67,6 +77,30 @@ public class EncryptionTool {
         // 显示窗口
         frame.add(panel);
         frame.setVisible(true);
+    }
+    
+    public static void saveEncryptionFile(byte[] Message, String type) {
+    	String typeString;
+    	if (type.equals("encrypt")) {
+    		typeString = "加密";
+    	} else {
+    		typeString = "解密";
+    	}
+    	
+	    JFileChooser fileChooser = new JFileChooser();
+	    fileChooser.setDialogTitle("选择保存文件的路径");
+	    if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+	        File saveFile = fileChooser.getSelectedFile();  // 获取用户选择的保存路径
+	        try {
+	            Files.write(saveFile.toPath(), Message);
+	            JOptionPane.showMessageDialog(null, typeString + "文件已保存到:\n" + saveFile.getAbsolutePath(),
+	                                          "保存成功", JOptionPane.INFORMATION_MESSAGE);
+	        } catch (IOException e) {
+	            // 异常处理
+	            JOptionPane.showMessageDialog(null, "保存文件失败: " + e.getMessage(), 
+	                                          "错误", JOptionPane.ERROR_MESSAGE);
+	        }
+	    }
     }
     
     public static void generateRSAKey() {
@@ -122,37 +156,51 @@ public class EncryptionTool {
     	return hashValue;
     }
     
-    public static void encryptionProcess(String inputMessage, String selectedEncryptionAlgorithm, 
-    		String encryptionKey, String selectedHashAlgorithm, String myPrivateKey, String peerPublicKey) {
+    public static void encryptionProcess(byte[] MessageBytes, String selectedEncryptionAlgorithm, 
+    		String encryptionKey, String selectedHashAlgorithm, String myPrivateKey, String peerPublicKey, String inputType) {
     	// hash签名计算
-    	byte[] msgBytes = inputMessage.getBytes();
-    	String hashValue = computeHashString(selectedHashAlgorithm, msgBytes);
+    	String hashValue = computeHashString(selectedHashAlgorithm, MessageBytes);
     	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", myPrivateKey);
     	byte[] encryptedHash = hashCipher.encrypt(hashValue.getBytes());
     	
-    	byte[] combinedMessageBytes = utils.Utils.joinWithBase64Separator(msgBytes, encryptedHash, " ");
-    	
+    	byte[] combinedMessageBytes = utils.Utils.joinWithBase64Separator(MessageBytes, encryptedHash, " ");
     	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
+    	System.out.println("encrypted key:\n" + encryptionKey);
     	byte[] encryptedMessage = cipher.encrypt(combinedMessageBytes);
-    	String encryptedMessageBase64 = utils.Utils.byteArrayToBase64(encryptedMessage);
     	
-    	System.out.println(encryptedMessageBase64);
-    	
-    	
+    	if (inputType.equals("String")) {
+    		String encryptedMessageBase64 = utils.Utils.byteArrayToBase64(encryptedMessage);
+    		System.out.println("encrypted message:\n" + encryptedMessageBase64);
+    		showResult(encryptedMessageBase64, "encrypt");
+    	}
+    	else {
+    		saveEncryptionFile(encryptedMessage, "encrypt");
+    	}    	
     }
     
-    public static void decryptionProcess(String inputMessage, String selectedEncryptionAlgorithm, 
-    		String encryptionKey, String selectedHashAlgorithm, String myPrivateKey, String peerPublicKey) {
+    public static void decryptionProcess(byte[] inputMessageBytes, String selectedEncryptionAlgorithm, 
+    		String encryptionKey, String selectedHashAlgorithm, String myPrivateKey, String peerPublicKey, String inputType) {
     	// step1 解密
-    	byte[] msgBytes = utils.Utils.base64ToByteArray(inputMessage);
     	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
-    	byte[] decryptedMessage = cipher.decrypt(msgBytes);
+    	System.out.println(selectedEncryptionAlgorithm + " " + encryptionKey);
+    	byte[] decryptedMessage = cipher.decrypt(inputMessageBytes);
+    	System.out.println("decrypted key:\n" + encryptionKey);
+    	System.out.println("decrypted combined message:\n" + (new String(decryptedMessage)));
     	
     	// step2 
     	byte[][] combinedMessages = utils.Utils.splitByBase64Separator(decryptedMessage, " ");
     	byte[] message = combinedMessages[0];
     	byte[] encryptedHash = combinedMessages[1];
     	System.out.println(new String(message));
+    	
+    	
+    	if (inputType.equals("String")) {
+    		String decryptedResult = new String(message);
+    		showResult(decryptedResult, "decrypt");
+    	} else {
+    		saveEncryptionFile(message, "decrypt");
+    	}
+    	
     	
     	// 校验hash值
     	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", peerPublicKey);
@@ -196,9 +244,11 @@ public class EncryptionTool {
                 inputContentField.setEnabled(true);
                 fileSelectButton.setEnabled(false);
                 fileSelectButton.setText("选择文件");
+                inputType = "String";
             } else {
                 inputContentField.setEnabled(false);
                 fileSelectButton.setEnabled(true);
+                inputType = "File";
             }
         });
 
@@ -252,6 +302,7 @@ public class EncryptionTool {
         generateKeyButton.addActionListener(e -> {
         	String algorithm = (String) algorithmCombo.getSelectedItem();
         	long seed = 123456L;  // 随机种子
+        	// long seed = System.currentTimeMillis();  // 当前时间戳作为种子
 
             if ("DES".equals(algorithm)) {
                 String desKey = RandomKey.generateDESKey(seed); // 自定义的生成 DES 密钥的函数
@@ -264,8 +315,15 @@ public class EncryptionTool {
 
         importKeyButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-                keyField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+            if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {                
+                String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            	try {
+					String keyString = Utils.loadRSAKey(filePath);
+					keyField.setText(keyString);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+            	
             }
         });
 
@@ -329,25 +387,55 @@ public class EncryptionTool {
         buttonPanel.add(clearButton);
 
         encryptButton.addActionListener(e -> {
-        	String inputMessage = inputContentField.getText();
+        	byte[] inputData;
+        	if (inputType.equals("String")) {
+        		String inputString = inputContentField.getText();
+        		inputData = inputString.getBytes();      	
+        	}
+        	else {
+        		String filePath = fileSelectButton.getText();
+        	    try {
+        	        inputData = Files.readAllBytes(Paths.get(filePath));
+        	    } catch (IOException e1) {
+        	        JOptionPane.showMessageDialog(null, "文件读取失败: " + e1.getMessage());
+        	        inputData = new byte[0];  // 初始化为空字节数组，防止后续出错
+        	    }
+        		
+        	}
+        	
         	String selectedEncryptionAlgorithm = (String) algorithmCombo.getSelectedItem();
         	String encryptionKey = keyField.getText();
         	String selectedHashAlgorithm = (String) signatureAlgorithmCombo.getSelectedItem();
         	String myPrivateKey = signatureKeyField0.getText();
         	String peerPublicKey = signatureKeyField1.getText();	
-        	encryptionProcess(inputMessage, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, myPrivateKey, peerPublicKey);
+        	encryptionProcess(inputData, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, myPrivateKey, peerPublicKey, inputType);
         	
     	});
         
         
         decryptButton.addActionListener(e -> {
-        	String inputMessage = inputContentField.getText();
+        	byte[] inputData;
+        	if (inputType.equals("String")) {
+        		String inputString = inputContentField.getText();
+        		System.out.println("encrypted message:\n" + (new String(inputString)));
+        		inputData = utils.Utils.base64ToByteArray(inputString);
+        	}
+        	else {
+        		String filePath = fileSelectButton.getText();
+        	    try {
+        	        inputData = Files.readAllBytes(Paths.get(filePath));
+        	    } catch (IOException e1) {
+        	        JOptionPane.showMessageDialog(null, "文件读取失败: " + e1.getMessage());
+        	        inputData = new byte[0];  // 初始化为空字节数组，防止后续出错
+        	    }	
+        	}
+        	
         	String selectedEncryptionAlgorithm = (String) algorithmCombo.getSelectedItem();
         	String encryptionKey = keyField.getText();
         	String selectedHashAlgorithm = (String) signatureAlgorithmCombo.getSelectedItem();
         	String myPrivateKey = signatureKeyField0.getText();
         	String peerPublicKey = signatureKeyField1.getText();	
-        	decryptionProcess(inputMessage, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, myPrivateKey, peerPublicKey);
+        	decryptionProcess(inputData, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, myPrivateKey, peerPublicKey, inputType);
         });
         
         clearButton.addActionListener(e -> {
