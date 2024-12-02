@@ -157,12 +157,13 @@ public class EncryptionTool {
     }
     
     public static void encryptionProcess(byte[] MessageBytes, String selectedEncryptionAlgorithm, 
-    		String encryptionKey, String selectedHashAlgorithm, String myPrivateKey, String peerPublicKey, String inputType) {
+    		String encryptionKey, String selectedHashAlgorithm, String sigurateKey, String keyEncrypt, String inputType) {
     	// hash签名计算
     	String hashValue = computeHashString(selectedHashAlgorithm, MessageBytes);
-    	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", myPrivateKey);
+    	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", sigurateKey);
     	byte[] encryptedHash = hashCipher.encrypt(hashValue.getBytes());
     	
+    	// 明文||HMAC
     	byte[] combinedMessageBytes = utils.Utils.joinWithBase64Separator(MessageBytes, encryptedHash, " ");
     	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
     	System.out.println("encrypted key:\n" + encryptionKey);
@@ -179,7 +180,7 @@ public class EncryptionTool {
     }
     
     public static void decryptionProcess(byte[] inputMessageBytes, String selectedEncryptionAlgorithm, 
-    		String encryptionKey, String selectedHashAlgorithm, String myPrivateKey, String peerPublicKey, String inputType) {
+    		String encryptionKey, String selectedHashAlgorithm, String sigurateKey, String keyEncrypt, String inputType) {
     	// step1 解密
     	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
     	System.out.println(selectedEncryptionAlgorithm + " " + encryptionKey);
@@ -203,7 +204,7 @@ public class EncryptionTool {
     	
     	
     	// 校验hash值
-    	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", peerPublicKey);
+    	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", keyEncrypt);
     	byte[] decryptedHash = hashCipher.decrypt(encryptedHash);
     	String decryptedHashString = new String(decryptedHash);
     	String recomputedHash = computeHashString(selectedHashAlgorithm, message);
@@ -258,23 +259,44 @@ public class EncryptionTool {
                 fileSelectButton.setText(fileChooser.getSelectedFile().getAbsolutePath());
                 fileSelectButton.setEnabled(false); // 禁用按钮以防修改
             }
-        });
-
-        // 公私钥生成模块
-        JPanel rsaPanel = new JPanel(new GridLayout(1, 2, 10, 10));
-        rsaPanel.setBorder(BorderFactory.createTitledBorder("RSA公私钥生成"));
-        JButton generateRSAKeysButton = new JButton("生成公私钥对");
-
-        rsaPanel.add(new JLabel("操作:"));
-        rsaPanel.add(generateRSAKeysButton);
-
-        generateRSAKeysButton.addActionListener(e -> {
-        	generateRSAKey();
+        });     
+        
+        
+        // hash设置面板        
+        JPanel hashPanel = new JPanel(new GridLayout(1, 2, 10, 10));
+        hashPanel.setBorder(BorderFactory.createTitledBorder("Hash算法"));
+        JLabel hashAlgorithmLabel = new JLabel("选择Hash算法:");
+        JComboBox<String> hashAlgorithmCombo = new JComboBox<>(new String[]{"SHA", "MD5"});
+        hashPanel.add(hashAlgorithmLabel);
+        hashPanel.add(hashAlgorithmCombo);
+        
+        
+        // 签名设置面板
+        JPanel signaturePanel = new JPanel(new GridLayout(1, 3, 10, 10));
+        signaturePanel.setBorder(BorderFactory.createTitledBorder("数字签名设置"));
+        JLabel signatureKeyLabel = new JLabel("数字签名密钥:");
+        JTextField signatureKeyField = new JTextField();
+        JButton importSignatureKeyButton = new JButton("导入密钥");
+        
+        signaturePanel.add(signatureKeyLabel);
+        signaturePanel.add(signatureKeyField);
+        signaturePanel.add(importSignatureKeyButton);
+        importSignatureKeyButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
+            	String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            	try {
+					String keyString = Utils.loadRSAKey(filePath);
+					signatureKeyField.setText(keyString);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+            }
         });
         
 
         // 加密算法选择面板
-        JPanel encryptionPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        JPanel encryptionPanel = new JPanel(new GridLayout(4, 2, 10, 10));
         encryptionPanel.setBorder(BorderFactory.createTitledBorder("加密设置"));
 
         JLabel algorithmLabel = new JLabel("选择加密算法:");
@@ -283,6 +305,7 @@ public class EncryptionTool {
         JTextField keyField = new JTextField();
         JButton generateKeyButton = new JButton("生成密钥");
         JButton importKeyButton = new JButton("导入密钥");
+        JButton generateRSAKeysButton = new JButton("生成公私钥对");
 
         encryptionPanel.add(algorithmLabel);
         encryptionPanel.add(algorithmCombo);
@@ -290,6 +313,7 @@ public class EncryptionTool {
         encryptionPanel.add(keyField);
         encryptionPanel.add(generateKeyButton);
         encryptionPanel.add(importKeyButton);
+        encryptionPanel.add(generateRSAKeysButton);
         
         algorithmCombo.addActionListener(e -> {
             String selectedAlgorithm = (String) algorithmCombo.getSelectedItem();
@@ -326,56 +350,39 @@ public class EncryptionTool {
             	
             }
         });
-
-        // 签名设置面板        
-        JPanel signaturePanel = new JPanel(new GridLayout(3, 3, 10, 10));
-        signaturePanel.setBorder(BorderFactory.createTitledBorder("签名设置"));
-
-        JLabel signatureAlgorithmLabel = new JLabel("选择Hash算法:");
-        JComboBox<String> signatureAlgorithmCombo = new JComboBox<>(new String[]{"SHA", "MD5"});
-        JLabel signatureKeyLabel0 = new JLabel("己方签名私钥:");
-        JTextField signatureKeyField0 = new JTextField();
-        JButton importSignatureKeyButton0 = new JButton("导入密钥");
-        JLabel signatureKeyLabel1 = new JLabel("对方签名公钥:");
-        JTextField signatureKeyField1 = new JTextField();
-        JButton importSignatureKeyButton1 = new JButton("导入密钥");
-
-        signaturePanel.add(signatureAlgorithmLabel);
-        signaturePanel.add(new JLabel()); // 占位
-        signaturePanel.add(signatureAlgorithmCombo);
-        // 己方私钥
-        signaturePanel.add(signatureKeyLabel0);
-        signaturePanel.add(signatureKeyField0);
-        signaturePanel.add(importSignatureKeyButton0);
-        // 对方公钥
-        signaturePanel.add(signatureKeyLabel1);
-        signaturePanel.add(signatureKeyField1);
-        signaturePanel.add(importSignatureKeyButton1);
         
-        importSignatureKeyButton0.addActionListener(e -> {
+        generateRSAKeysButton.addActionListener(e -> {
+	      	generateRSAKey();
+	    });
+        
+        // 数字签名模块
+//        JPanel rsaPanel = new JPanel(new GridLayout(1, 2, 10, 10));
+//       
+
+        // 密钥分发设置面板        
+        JPanel keyEncryptPanel = new JPanel(new GridLayout(1, 3, 10, 10));
+        keyEncryptPanel.setBorder(BorderFactory.createTitledBorder("密钥加密设置"));
+
+        JLabel keyEncryptLabel = new JLabel("密钥分发密钥:");
+        JTextField keyEncryptField = new JTextField();
+        JButton keyEncryptButton = new JButton("导入密钥");
+        keyEncryptPanel.add(keyEncryptLabel);
+        keyEncryptPanel.add(keyEncryptField);
+        keyEncryptPanel.add(keyEncryptButton);
+        
+        keyEncryptButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
             	String filePath = fileChooser.getSelectedFile().getAbsolutePath();
             	try {
 					String keyString = Utils.loadRSAKey(filePath);
-					signatureKeyField0.setText(keyString);
+					keyEncryptField.setText(keyString);
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
             }
         });
-        importSignatureKeyButton1.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-            	String filePath = fileChooser.getSelectedFile().getAbsolutePath();
-            	try {
-					String keyString = Utils.loadRSAKey(filePath);
-					signatureKeyField1.setText(keyString);
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-            }
-        });
+        
         
         // 按钮面板
         JPanel buttonPanel = new JPanel();
@@ -405,10 +412,10 @@ public class EncryptionTool {
         	
         	String selectedEncryptionAlgorithm = (String) algorithmCombo.getSelectedItem();
         	String encryptionKey = keyField.getText();
-        	String selectedHashAlgorithm = (String) signatureAlgorithmCombo.getSelectedItem();
-        	String myPrivateKey = signatureKeyField0.getText();
-        	String peerPublicKey = signatureKeyField1.getText();	
-        	encryptionProcess(inputData, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, myPrivateKey, peerPublicKey, inputType);
+        	String selectedHashAlgorithm = (String) hashAlgorithmCombo.getSelectedItem();
+        	String sigurateKey = signatureKeyField.getText();
+        	String keyEncrypt = keyEncryptField.getText();	
+        	encryptionProcess(inputData, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, sigurateKey, keyEncrypt, inputType);
         	
     	});
         
@@ -432,10 +439,10 @@ public class EncryptionTool {
         	
         	String selectedEncryptionAlgorithm = (String) algorithmCombo.getSelectedItem();
         	String encryptionKey = keyField.getText();
-        	String selectedHashAlgorithm = (String) signatureAlgorithmCombo.getSelectedItem();
-        	String myPrivateKey = signatureKeyField0.getText();
-        	String peerPublicKey = signatureKeyField1.getText();	
-        	decryptionProcess(inputData, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, myPrivateKey, peerPublicKey, inputType);
+        	String selectedHashAlgorithm = (String) hashAlgorithmCombo.getSelectedItem();
+        	String sigurateKey = signatureKeyField.getText();
+        	String keyEncrypt = keyEncryptField.getText();	
+        	decryptionProcess(inputData, selectedEncryptionAlgorithm, encryptionKey, selectedHashAlgorithm, sigurateKey, keyEncrypt, inputType);
         });
         
         clearButton.addActionListener(e -> {
@@ -443,8 +450,8 @@ public class EncryptionTool {
             fileSelectButton.setText("选择文件");
             fileSelectButton.setEnabled(false);
             keyField.setText("");
-            signatureKeyField0.setText("");
-            signatureKeyField1.setText("");
+            signatureKeyField.setText("");
+            keyEncryptField.setText("");
         });
 
         // 布局整体
@@ -452,9 +459,11 @@ public class EncryptionTool {
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         
         mainPanel.add(inputPanel);
-        mainPanel.add(rsaPanel);
-        mainPanel.add(encryptionPanel);
+        mainPanel.add(hashPanel);
         mainPanel.add(signaturePanel);
+        mainPanel.add(encryptionPanel);
+        mainPanel.add(keyEncryptPanel);
+        
         
         JScrollPane scrollPane = new JScrollPane(mainPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
