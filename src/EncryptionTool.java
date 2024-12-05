@@ -16,13 +16,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
-import java.lang.classfile.instruction.NewMultiArrayInstruction;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.HashMap;
-
 
 // todo
 // 1. 密钥加密传输还没搞
@@ -40,8 +38,10 @@ public class EncryptionTool {
     	String typeString;
     	if (type.equals("encrypt")) {
     		typeString = "加密";
-    	} else {
+    	} else if (type.equals("decrypt")) {
     		typeString = "解密";
+    	} else {
+    		typeString = "密钥加密";
     	}
         JFrame frame = new JFrame(typeString + "结果");
         frame.setSize(400, 200);
@@ -162,11 +162,11 @@ public class EncryptionTool {
     	String hashValue = computeHashString(selectedHashAlgorithm, MessageBytes);
     	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", sigurateKey);
     	byte[] encryptedHash = hashCipher.encrypt(hashValue.getBytes());
-    	
+    	print("encrypted hash", encryptedHash);
     	// 明文||HMAC
     	byte[] combinedMessageBytes = utils.Utils.joinWithBase64Separator(MessageBytes, encryptedHash, " ");
+    	
     	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
-    	System.out.println("encrypted key:\n" + encryptionKey);
     	byte[] encryptedMessage = cipher.encrypt(combinedMessageBytes);
     	
     	if (inputType.equals("String")) {
@@ -177,12 +177,30 @@ public class EncryptionTool {
     	else {
     		saveEncryptionFile(encryptedMessage, "encrypt");
     	}    	
+    	
+    	// 加密密钥
+    	EncryptionAlgorithm keyCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", keyEncrypt);
+    	byte[] encryptedKey = keyCipher.encrypt(encryptionKey.getBytes());
+    	String encryptedKeyBase64 = utils.Utils.byteArrayToBase64(encryptedKey);
+    	showResult(encryptedKeyBase64, "key_encrypt");
+    	
+    	
+    }
+    
+    public static void print(String prefix, byte[] data) {
+    	String base64Data = utils.Utils.byteArrayToBase64(data);
+    	System.out.println(prefix + ": " + base64Data); 
     }
     
     public static void decryptionProcess(byte[] inputMessageBytes, String selectedEncryptionAlgorithm, 
     		String encryptionKey, String selectedHashAlgorithm, String sigurateKey, String keyEncrypt, String inputType) {
-    	// step1 解密
-    	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
+    	// step1 解密密钥
+    	EncryptionAlgorithm keyCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", keyEncrypt);
+    	byte[] decryptKeyByte = utils.Utils.base64ToByteArray(encryptionKey);
+    	String decryptKey = new String(keyCipher.decrypt(decryptKeyByte));
+    	print("decrypted key", keyCipher.decrypt(decryptKeyByte));
+    	
+    	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, decryptKey);
     	System.out.println(selectedEncryptionAlgorithm + " " + encryptionKey);
     	byte[] decryptedMessage = cipher.decrypt(inputMessageBytes);
     	System.out.println("decrypted key:\n" + encryptionKey);
@@ -192,6 +210,7 @@ public class EncryptionTool {
     	byte[][] combinedMessages = utils.Utils.splitByBase64Separator(decryptedMessage, " ");
     	byte[] message = combinedMessages[0];
     	byte[] encryptedHash = combinedMessages[1];
+    	print("decrypted hash", encryptedHash);
     	System.out.println(new String(message));
     	
     	
@@ -203,8 +222,8 @@ public class EncryptionTool {
     	}
     	
     	
-    	// 校验hash值
-    	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", keyEncrypt);
+    	// 校验hash值 todo here
+    	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", sigurateKey);
     	byte[] decryptedHash = hashCipher.decrypt(encryptedHash);
     	String decryptedHashString = new String(decryptedHash);
     	String recomputedHash = computeHashString(selectedHashAlgorithm, message);
@@ -353,11 +372,7 @@ public class EncryptionTool {
         
         generateRSAKeysButton.addActionListener(e -> {
 	      	generateRSAKey();
-	    });
-        
-        // 数字签名模块
-//        JPanel rsaPanel = new JPanel(new GridLayout(1, 2, 10, 10));
-//       
+	    });      
 
         // 密钥分发设置面板        
         JPanel keyEncryptPanel = new JPanel(new GridLayout(1, 3, 10, 10));
@@ -467,7 +482,7 @@ public class EncryptionTool {
         
         JScrollPane scrollPane = new JScrollPane(mainPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        //scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(buttonPanel, BorderLayout.SOUTH);

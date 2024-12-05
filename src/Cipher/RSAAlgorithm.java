@@ -27,21 +27,21 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
 	}
     
     // 单块加密
-    public byte[] encrypt(byte[] data) {  // 加密
+    public byte[] encryptSingleChunk(byte[] data) {  // 加密
     	BigInteger inputMessage = new BigInteger(1, data);  // 防止负数处理
     	BigInteger outputResult = inputMessage.modPow(rk, rn);
     	return outputResult.toByteArray();
     }
     
     // 单块解密
-    public byte[] decrypt(byte[] data) {  // 解密
+    public byte[] decryptSingleChunk(byte[] data) {  // 解密
     	BigInteger inputMessage = new BigInteger(1, data);
     	BigInteger outputResult = inputMessage.modPow(rk, rn);
     	return outputResult.toByteArray();
     }
     
     // 分块加密
-    public byte[] encryptLargeData(byte[] data) {
+    public byte[] encrypt(byte[] data) {
         int maxChunkSize = chunkSize; // 最大块大小（根据密钥位数计算）
         List<byte[]> encryptedChunks = new ArrayList<>();
 
@@ -51,7 +51,7 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
             System.arraycopy(data, offset, chunk, 0, chunkLength);
 
             // 加密每个块
-            byte[] encryptedChunk = encrypt(chunk);
+            byte[] encryptedChunk = encryptSingleChunk(chunk);
 
             // 在块前添加长度前缀
             byte[] prefixedChunk = new byte[4 + encryptedChunk.length];
@@ -66,7 +66,7 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
     
     
     // 分块解密
-    public byte[] decryptLargeData(byte[] encryptedData) {
+    public byte[] decrypt(byte[] encryptedData) {
         List<byte[]> decryptedChunks = new ArrayList<>();
         int offset = 0;
 
@@ -81,7 +81,7 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
             offset += encryptedChunkLength;
 
             // 解密块
-            byte[] decryptedChunk = decrypt(encryptedChunk);
+            byte[] decryptedChunk = decryptSingleChunk(encryptedChunk);
             decryptedChunks.add(decryptedChunk);
         }
 
@@ -122,8 +122,6 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
     }
 
     
-    
-
     // 加密方法
     public static BigInteger encrypt(BigInteger plaintext, BigInteger e, BigInteger n) {
         return plaintext.modPow(e, n);
@@ -225,9 +223,6 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
         String ek = utils.Utils.bigIntegerToBase64(e);
         String nk = utils.Utils.bigIntegerToBase64(n);
         String dk = utils.Utils.bigIntegerToBase64(d);
-        
-
-        
 
         // 原始大数据
         String largeMessage = repeatString("This is a very large message!", 100); // 模拟大数据
@@ -238,12 +233,12 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
         // 构造 RSAAlgorithm 实例
         RSAAlgorithm rsaAlgorithm = new RSAAlgorithm((ek + " " + nk).getBytes());
         // 分块加密
-        byte[] encryptedData = rsaAlgorithm.encryptLargeData(largeData);
+        byte[] encryptedData = rsaAlgorithm.encrypt(largeData);
         System.out.println("Encrypted data length: " + encryptedData.length);
 
         // 分块解密
         RSAAlgorithm rsaDecryptor = new RSAAlgorithm((dk + " " + nk).getBytes());
-        byte[] decryptedData = rsaDecryptor.decryptLargeData(encryptedData);
+        byte[] decryptedData = rsaDecryptor.decrypt(encryptedData);
         System.out.println("Decrypted data length: " + decryptedData.length);
 
         // 验证解密结果
