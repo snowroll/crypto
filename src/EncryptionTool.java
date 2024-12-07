@@ -61,13 +61,24 @@ public class EncryptionTool {
         frame.setSize(600, 400);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setLocationRelativeTo(null);
+        
+        Dimension uniformTextSize = new Dimension(400, 150);
+        
 
         // 主面板，垂直布局
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new GridLayout(3, 1, 10, 10)); // 三行布局
+//        JPanel mainPanel = new JPanel();
+//        mainPanel.setLayout(new GridLayout(3, 1, 10, 10)); // 三行布局
+        
+        JPanel mainPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10); // 设置内边距
+        gbc.fill = GridBagConstraints.BOTH; // 拉伸组件以填充可用空间
+        gbc.weightx = 1.0; // 宽度平分
+        gbc.weighty = 0.0; // 高度可控
 
         // 第一部分：加密/解密结果
-        JPanel resultPanel = new JPanel(new BorderLayout(10, 10));
+        // JPanel resultPanel = new JPanel(new BorderLayout(10, 10));
+        JPanel resultPanel = new JPanel(new GridBagLayout());
         resultPanel.setBorder(BorderFactory.createTitledBorder("信息" + title));
 
         if (result instanceof String) {
@@ -76,6 +87,7 @@ public class EncryptionTool {
             resultTextArea.setLineWrap(true);
             resultTextArea.setWrapStyleWord(true);
             JScrollPane scrollPane = new JScrollPane(resultTextArea);
+            scrollPane.setPreferredSize(uniformTextSize);
 
             JButton copyButton = new JButton("复制到剪切板");
             copyButton.addActionListener(e -> {
@@ -84,9 +96,23 @@ public class EncryptionTool {
                 clipboard.setContents(selection, null);
                 showAutoCloseDialog(frame, "已复制到剪切板！", "提示", 1000);
             });
+            
+            // 布局 resultPanel 的子组件
+            GridBagConstraints innerGbc = new GridBagConstraints();
+            innerGbc.insets = new Insets(5, 5, 5, 5);
+            innerGbc.fill = GridBagConstraints.BOTH;
+            innerGbc.weightx = 1.0;
+            innerGbc.weighty = 1.0;
+            innerGbc.gridx = 0;
+            innerGbc.gridy = 0;
+            innerGbc.gridwidth = 2;
+            resultPanel.add(scrollPane, innerGbc);
 
-            resultPanel.add(scrollPane, BorderLayout.CENTER);
-            resultPanel.add(copyButton, BorderLayout.EAST);
+            innerGbc.weighty = 0.0;
+            innerGbc.gridy = 1;
+            innerGbc.gridwidth = 1;
+            innerGbc.anchor = GridBagConstraints.EAST;
+            resultPanel.add(copyButton, innerGbc);
         } else if (result instanceof byte[]) {
             JLabel label = new JLabel("选择结果保存路径");
             JButton saveButton = new JButton("保存文件");
@@ -105,13 +131,22 @@ public class EncryptionTool {
                     }
                 }
             });
+            
+            GridBagConstraints innerGbc = new GridBagConstraints();
+            innerGbc.insets = new Insets(5, 5, 5, 5);
+            innerGbc.fill = GridBagConstraints.HORIZONTAL;
+            innerGbc.weightx = 1.0;
+            innerGbc.gridx = 0;
+            innerGbc.gridy = 0;
+            resultPanel.add(label, innerGbc);
 
-            resultPanel.add(label, BorderLayout.CENTER);
-            resultPanel.add(saveButton, BorderLayout.EAST);
+            innerGbc.gridx = 1;
+            resultPanel.add(saveButton, innerGbc);
         }
 
         // 第二部分：加密/解密密钥
-        JPanel keyPanel = new JPanel(new BorderLayout(10, 10));
+        // JPanel keyPanel = new JPanel(new BorderLayout(10, 10));
+        JPanel keyPanel = new JPanel(new GridBagLayout());
         keyPanel.setBorder(BorderFactory.createTitledBorder("密钥" + title));
 
         JTextArea keyTextArea = new JTextArea(key);
@@ -119,6 +154,7 @@ public class EncryptionTool {
         keyTextArea.setLineWrap(true);
         keyTextArea.setWrapStyleWord(true);
         JScrollPane keyScrollPane = new JScrollPane(keyTextArea);
+        keyScrollPane.setPreferredSize(uniformTextSize);
 
         JButton copyKeyButton = new JButton("复制到剪切板");
         copyKeyButton.addActionListener(e -> {
@@ -127,21 +163,47 @@ public class EncryptionTool {
             clipboard.setContents(selection, null);
             showAutoCloseDialog(frame, "密钥已复制到剪切板！", "提示", 1000);
         });
+        
+        GridBagConstraints innerGbc = new GridBagConstraints();
+        innerGbc.insets = new Insets(5, 5, 5, 5);
+        innerGbc.fill = GridBagConstraints.BOTH;
+        innerGbc.weightx = 1.0;
+        innerGbc.weighty = 1.0;
+        innerGbc.gridx = 0;
+        innerGbc.gridy = 0;
+        innerGbc.gridwidth = 2;
+        keyPanel.add(keyScrollPane, innerGbc);
 
-        keyPanel.add(keyScrollPane, BorderLayout.CENTER);
-        keyPanel.add(copyKeyButton, BorderLayout.EAST);
+        innerGbc.weighty = 0.0;
+        innerGbc.gridy = 1;
+        innerGbc.gridwidth = 1;
+        innerGbc.anchor = GridBagConstraints.EAST;
+        keyPanel.add(copyKeyButton, innerGbc);
 
         // 第三部分：附加信息
-        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel infoPanel = new JPanel(new GridBagLayout());
         infoPanel.setBorder(BorderFactory.createTitledBorder("附加信息"));
 
         JLabel infoLabel = new JLabel(additionalInfo);
-        infoPanel.add(infoLabel);
-
+        infoLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        infoPanel.add(infoLabel, gbc);
+        
         // 将所有部分加入主面板
-        mainPanel.add(resultPanel);
-        mainPanel.add(keyPanel);
-        mainPanel.add(infoPanel);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weighty = 0.3;
+        mainPanel.add(resultPanel, gbc);
+
+        gbc.gridy = 1;
+        gbc.weighty = 0.3;
+        mainPanel.add(keyPanel, gbc);
+
+        gbc.gridy = 2;
+        gbc.weighty = 0.1;
+        mainPanel.add(infoPanel, gbc);
 
         // 显示窗口
         frame.add(mainPanel);
@@ -309,7 +371,7 @@ public class EncryptionTool {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 10, 5, 10); // 组件之间的间距
         
-        Dimension uniformLabelSize = new Dimension(80, 30);
+        Dimension uniformLabelSize = new Dimension(100, 30);
         Dimension uniformButtonSize = new Dimension(100, 30);
         Dimension uniformComboSize = new Dimension(150, 30);
         Dimension uniformFieldSize = new Dimension(300, 40); 

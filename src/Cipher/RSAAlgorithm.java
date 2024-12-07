@@ -22,7 +22,7 @@ public class RSAAlgorithm implements EncryptionAlgorithm {
     	String[] keyParts = base64EspaceN.split(" ");
     	rk = utils.Utils.base64ToBigInteger(keyParts[0]);  // 这里e 和 d 统一表示为rk
     	rn = utils.Utils.base64ToBigInteger(keyParts[1]);
-    	System.out.println(rk + " " + rn);
+    	// System.out.println(rk + " " + rn);
     	chunkSize = rn.bitLength() / 8 - 1; // 默认加密块大
 	}
     
