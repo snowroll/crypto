@@ -15,6 +15,7 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -33,52 +34,121 @@ public class EncryptionTool {
         SwingUtilities.invokeLater(EncryptionTool::createAndShowGUI);
     }
     
-    public static void showResult(String Result, String type) {
-        // 创建弹出窗口
-    	String typeString;
-    	if (type.equals("encrypt")) {
-    		typeString = "加密";
-    	} else if (type.equals("decrypt")) {
-    		typeString = "解密";
-    	} else {
-    		typeString = "密钥加密";
+    public static void showAutoCloseDialog(JFrame parentFrame, String message, String title, int delayMillis) {
+    	JDialog dialog = new JDialog(parentFrame, title, true); // true 表示模态对话框
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        JLabel label = new JLabel(message, SwingConstants.CENTER);
+        dialog.add(label);
+        dialog.setSize(300, 150);
+        dialog.setLocationRelativeTo(parentFrame);
+
+        // 使用 Timer 定时关闭
+        Timer timer = new Timer(delayMillis, e -> dialog.dispose());
+        timer.setRepeats(false);
+        timer.start();
+
+        dialog.setVisible(true);
+    }
+    
+    public static void showResults(Object result, String key, String additionalInfo, String op) {
+        // 创建主窗口
+    	String title = "加密结果";
+    	if (op.equals("decrypt")) {
+    		title = "解密结果";    	
     	}
-        JFrame frame = new JFrame(typeString + "结果");
-        frame.setSize(400, 200);
+        JFrame frame = new JFrame(title);
+        frame.setSize(600, 400);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setLocationRelativeTo(null);
 
-        // 设置窗口布局
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout(10, 10));
+        // 主面板，垂直布局
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new GridLayout(3, 1, 10, 10)); // 三行布局
 
-        // 添加加密结果文本框（不可编辑）
-        JTextArea resultTextArea = new JTextArea(Result);
-        resultTextArea.setEditable(false);
-        resultTextArea.setLineWrap(true);
-        resultTextArea.setWrapStyleWord(true);
-        JScrollPane scrollPane = new JScrollPane(resultTextArea);
-        panel.add(scrollPane, BorderLayout.CENTER);
+        // 第一部分：加密/解密结果
+        JPanel resultPanel = new JPanel(new BorderLayout(10, 10));
+        resultPanel.setBorder(BorderFactory.createTitledBorder("信息" + title));
 
-        // 添加复制按钮
-        JButton copyButton = new JButton("复制到剪切板");
-        copyButton.addActionListener(e -> {
-            // 将加密结果复制到剪切板
-            StringSelection selection = new StringSelection(Result);
+        if (result instanceof String) {
+            JTextArea resultTextArea = new JTextArea((String) result);
+            resultTextArea.setEditable(false);
+            resultTextArea.setLineWrap(true);
+            resultTextArea.setWrapStyleWord(true);
+            JScrollPane scrollPane = new JScrollPane(resultTextArea);
+
+            JButton copyButton = new JButton("复制到剪切板");
+            copyButton.addActionListener(e -> {
+                StringSelection selection = new StringSelection((String) result);
+                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                clipboard.setContents(selection, null);
+                showAutoCloseDialog(frame, "已复制到剪切板！", "提示", 1000);
+            });
+
+            resultPanel.add(scrollPane, BorderLayout.CENTER);
+            resultPanel.add(copyButton, BorderLayout.EAST);
+        } else if (result instanceof byte[]) {
+            JLabel label = new JLabel("选择结果保存路径");
+            JButton saveButton = new JButton("保存文件");
+            saveButton.addActionListener(e -> {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("选择保存路径");
+                int userSelection = fileChooser.showSaveDialog(null);
+
+                if (userSelection == JFileChooser.APPROVE_OPTION) {
+                    File fileToSave = fileChooser.getSelectedFile();
+                    try (FileOutputStream fos = new FileOutputStream(fileToSave)) {
+                        fos.write((byte[]) result);
+                        showAutoCloseDialog(frame, "文件已保存到 " + fileToSave.getAbsolutePath(), "提示", 1000);
+                    } catch (IOException ex) {
+                        JOptionPane.showMessageDialog(frame, "文件保存失败: " + ex.getMessage(), "错误", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+
+            resultPanel.add(label, BorderLayout.CENTER);
+            resultPanel.add(saveButton, BorderLayout.EAST);
+        }
+
+        // 第二部分：加密/解密密钥
+        JPanel keyPanel = new JPanel(new BorderLayout(10, 10));
+        keyPanel.setBorder(BorderFactory.createTitledBorder("密钥" + title));
+
+        JTextArea keyTextArea = new JTextArea(key);
+        keyTextArea.setEditable(false);
+        keyTextArea.setLineWrap(true);
+        keyTextArea.setWrapStyleWord(true);
+        JScrollPane keyScrollPane = new JScrollPane(keyTextArea);
+
+        JButton copyKeyButton = new JButton("复制到剪切板");
+        copyKeyButton.addActionListener(e -> {
+            StringSelection selection = new StringSelection(key);
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             clipboard.setContents(selection, null);
-
-            // 提示已复制
-            JOptionPane.showMessageDialog(frame, typeString + "结果已复制到剪切板！");
+            showAutoCloseDialog(frame, "密钥已复制到剪切板！", "提示", 1000);
         });
 
-        panel.add(copyButton, BorderLayout.SOUTH);
+        keyPanel.add(keyScrollPane, BorderLayout.CENTER);
+        keyPanel.add(copyKeyButton, BorderLayout.EAST);
+
+        // 第三部分：附加信息
+        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        infoPanel.setBorder(BorderFactory.createTitledBorder("附加信息"));
+
+        JLabel infoLabel = new JLabel(additionalInfo);
+        infoPanel.add(infoLabel);
+
+        // 将所有部分加入主面板
+        mainPanel.add(resultPanel);
+        mainPanel.add(keyPanel);
+        mainPanel.add(infoPanel);
 
         // 显示窗口
-        frame.add(panel);
+        frame.add(mainPanel);
         frame.setVisible(true);
     }
-    
+
+
     public static void saveEncryptionFile(byte[] Message, String type) {
     	String typeString;
     	if (type.equals("encrypt")) {
@@ -162,29 +232,27 @@ public class EncryptionTool {
     	String hashValue = computeHashString(selectedHashAlgorithm, MessageBytes);
     	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", sigurateKey);
     	byte[] encryptedHash = hashCipher.encrypt(hashValue.getBytes());
-    	print("encrypted hash", encryptedHash);
+    	// print("encrypted hash", encryptedHash);
     	// 明文||HMAC
     	byte[] combinedMessageBytes = utils.Utils.joinWithBase64Separator(MessageBytes, encryptedHash, " ");
     	
     	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, encryptionKey);
     	byte[] encryptedMessage = cipher.encrypt(combinedMessageBytes);
     	
-    	if (inputType.equals("String")) {
-    		String encryptedMessageBase64 = utils.Utils.byteArrayToBase64(encryptedMessage);
-    		System.out.println("encrypted message:\n" + encryptedMessageBase64);
-    		showResult(encryptedMessageBase64, "encrypt");
-    	}
-    	else {
-    		saveEncryptionFile(encryptedMessage, "encrypt");
-    	}    	
-    	
     	// 加密密钥
     	EncryptionAlgorithm keyCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", keyEncrypt);
     	byte[] encryptedKey = keyCipher.encrypt(encryptionKey.getBytes());
     	String encryptedKeyBase64 = utils.Utils.byteArrayToBase64(encryptedKey);
-    	showResult(encryptedKeyBase64, "key_encrypt");
     	
-    	
+    	Object encryptedResult;
+    	if (inputType.equals("String")) {
+    		encryptedResult = utils.Utils.byteArrayToBase64(encryptedMessage);
+    	}
+    	else {
+    		encryptedResult = encryptedMessage;
+    	}    
+    	String additionInfo = "<html>加密成功!<br>hash: " + hashValue + "</html>";
+    	showResults(encryptedResult, encryptedKeyBase64, additionInfo, "encrypt");
     }
     
     public static void print(String prefix, byte[] data) {
@@ -198,65 +266,91 @@ public class EncryptionTool {
     	EncryptionAlgorithm keyCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", keyEncrypt);
     	byte[] decryptKeyByte = utils.Utils.base64ToByteArray(encryptionKey);
     	String decryptKey = new String(keyCipher.decrypt(decryptKeyByte));
-    	print("decrypted key", keyCipher.decrypt(decryptKeyByte));
+    	// print("decrypted key", keyCipher.decrypt(decryptKeyByte));
     	
     	EncryptionAlgorithm cipher = EncryptionAlgorithmFactory.getAlgorithm(selectedEncryptionAlgorithm, decryptKey);
-    	System.out.println(selectedEncryptionAlgorithm + " " + encryptionKey);
     	byte[] decryptedMessage = cipher.decrypt(inputMessageBytes);
-    	System.out.println("decrypted key:\n" + encryptionKey);
-    	System.out.println("decrypted combined message:\n" + (new String(decryptedMessage)));
     	
-    	// step2 
+    	// step2 解密正文
     	byte[][] combinedMessages = utils.Utils.splitByBase64Separator(decryptedMessage, " ");
     	byte[] message = combinedMessages[0];
     	byte[] encryptedHash = combinedMessages[1];
-    	print("decrypted hash", encryptedHash);
-    	System.out.println(new String(message));
-    	
-    	
+    	Object decryptedResult;
     	if (inputType.equals("String")) {
-    		String decryptedResult = new String(message);
-    		showResult(decryptedResult, "decrypt");
-    	} else {
-    		saveEncryptionFile(message, "decrypt");
+    		decryptedResult = new String(message);
     	}
+    	else {
+    		decryptedResult = message;
+    	} 
     	
+    	// step3 校验数字签名
     	
-    	// 校验hash值 todo here
+    	// 校验hash值
     	EncryptionAlgorithm hashCipher = EncryptionAlgorithmFactory.getAlgorithm("RSA", sigurateKey);
     	byte[] decryptedHash = hashCipher.decrypt(encryptedHash);
     	String decryptedHashString = new String(decryptedHash);
     	String recomputedHash = computeHashString(selectedHashAlgorithm, message);
-    	
-    	System.out.print(decryptedHashString + "\n" + recomputedHash + "\n");
-    	if (decryptedHashString.equals(recomputedHash)) {
-    		System.out.print("it is good");
+    	String additionInfo = "<html>文件签名校验通过!<br>hash: " + decryptedHashString + "</html>";
+    	if (!decryptedHashString.equals(recomputedHash)) {
+    		additionInfo = "文件签名校验失败！！！";
     	}
+    	
+    	showResults(decryptedResult, decryptKey, additionInfo, "decrypt");
     }
 
     private static void createAndShowGUI() {
         JFrame frame = new JFrame("加密签名工具");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 600);
+        frame.setSize(650, 650);
         frame.setLayout(new BorderLayout());
+        
+        // 主面板，使用 GridBagLayout
+        JPanel mainPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 10, 5, 10); // 组件之间的间距
+        
+        Dimension uniformLabelSize = new Dimension(80, 30);
+        Dimension uniformButtonSize = new Dimension(100, 30);
+        Dimension uniformComboSize = new Dimension(150, 30);
+        Dimension uniformFieldSize = new Dimension(300, 40); 
 
         // 输入设置面板
-        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        JPanel inputPanel = new JPanel(new GridBagLayout());
         inputPanel.setBorder(BorderFactory.createTitledBorder("输入设置"));
 
         JLabel inputTypeLabel = new JLabel("输入类型:");
+        inputTypeLabel.setPreferredSize(uniformLabelSize);
         JComboBox<String> inputTypeCombo = new JComboBox<>(new String[]{"字符串", "文件"});
+        //inputTypeCombo.setPreferredSize(uniformComboSize);
+        
         JLabel inputContentLabel = new JLabel("输入内容:");
-        JTextField inputContentField = new JTextField();
-        JButton fileSelectButton = new JButton("选择文件");
-        fileSelectButton.setEnabled(false); // 初始状态禁用
+        inputContentLabel.setPreferredSize(uniformLabelSize);
+        inputContentLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        JTextArea inputContentField = new JTextArea(3, 20);
+        inputContentField.setLineWrap(true);
+        inputContentField.setWrapStyleWord(true);
+        JScrollPane inputContentScrollPane = new JScrollPane(inputContentField);
+        inputContentScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        inputPanel.add(inputTypeLabel);
-        inputPanel.add(inputTypeCombo);
-        inputPanel.add(inputContentLabel);
-        inputPanel.add(inputContentField);
-        inputPanel.add(new JLabel()); // 占位
-        inputPanel.add(fileSelectButton);
+        JButton fileSelectButton = new JButton("选择文件");
+        fileSelectButton.setPreferredSize(uniformButtonSize);
+        fileSelectButton.setPreferredSize(uniformButtonSize);
+        fileSelectButton.setEnabled(false); // 初始状态禁用
+        
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        inputPanel.add(inputTypeLabel, gbc);
+        gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1;
+        gbc.gridwidth = 2;
+        inputPanel.add(inputTypeCombo, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
+        inputPanel.add(inputContentLabel, gbc);
+        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 1;
+        gbc.gridwidth = 1;
+        inputPanel.add(inputContentScrollPane, gbc);
+        gbc.gridx = 2; gbc.gridy = 1; gbc.weightx = 0;
+        inputPanel.add(fileSelectButton, gbc);
 
         // 根据输入类型调整组件
         inputTypeCombo.addActionListener(e -> {
@@ -275,31 +369,53 @@ public class EncryptionTool {
         fileSelectButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-                fileSelectButton.setText(fileChooser.getSelectedFile().getAbsolutePath());
-                fileSelectButton.setEnabled(false); // 禁用按钮以防修改
+            	inputContentField.setText(fileChooser.getSelectedFile().getAbsolutePath());
             }
         });     
         
         
         // hash设置面板        
-        JPanel hashPanel = new JPanel(new GridLayout(1, 2, 10, 10));
+        JPanel hashPanel = new JPanel(new GridBagLayout());
         hashPanel.setBorder(BorderFactory.createTitledBorder("Hash算法"));
         JLabel hashAlgorithmLabel = new JLabel("选择Hash算法:");
+        hashAlgorithmLabel.setPreferredSize(uniformLabelSize);        hashAlgorithmLabel.setHorizontalAlignment(SwingConstants.LEFT);
         JComboBox<String> hashAlgorithmCombo = new JComboBox<>(new String[]{"SHA", "MD5"});
-        hashPanel.add(hashAlgorithmLabel);
-        hashPanel.add(hashAlgorithmCombo);
+        //hashAlgorithmCombo.setPreferredSize(uniformComboSize);
+        
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        hashPanel.add(hashAlgorithmLabel, gbc);
+        gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1;
+        gbc.gridwidth = 1; // 占两列
+        hashPanel.add(hashAlgorithmCombo, gbc);
         
         
         // 签名设置面板
-        JPanel signaturePanel = new JPanel(new GridLayout(1, 3, 10, 10));
+        JPanel signaturePanel = new JPanel(new GridBagLayout());
         signaturePanel.setBorder(BorderFactory.createTitledBorder("数字签名设置"));
         JLabel signatureKeyLabel = new JLabel("数字签名密钥:");
-        JTextField signatureKeyField = new JTextField();
-        JButton importSignatureKeyButton = new JButton("导入密钥");
+        signatureKeyLabel.setPreferredSize(uniformLabelSize);
+        signatureKeyLabel.setHorizontalAlignment(SwingConstants.LEFT);
         
-        signaturePanel.add(signatureKeyLabel);
-        signaturePanel.add(signatureKeyField);
-        signaturePanel.add(importSignatureKeyButton);
+        JTextArea signatureKeyField = new JTextArea(1, 20);
+        JScrollPane signatureScrollPane = new JScrollPane(signatureKeyField);
+        signatureScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        signatureScrollPane.setPreferredSize(uniformFieldSize); // 设置宽度300，高度40
+        
+        JButton importSignatureKeyButton = new JButton("导入密钥");
+        importSignatureKeyButton.setPreferredSize(uniformButtonSize);
+        
+        
+        gbc.gridx = 0; gbc.gridy = 0;  gbc.weightx = 0;
+        signaturePanel.add(signatureKeyLabel, gbc);
+
+        gbc.gridx = 1; gbc.gridy = 0; 
+        gbc.weightx = 1; gbc.weighty = 1; // 水平 垂直方向扩展
+        signaturePanel.add(signatureScrollPane, gbc);
+
+        gbc.gridx = 2; gbc.gridy = 0; gbc.weightx = 0;
+        signaturePanel.add(importSignatureKeyButton, gbc);
+        
+        
         importSignatureKeyButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
@@ -315,24 +431,53 @@ public class EncryptionTool {
         
 
         // 加密算法选择面板
-        JPanel encryptionPanel = new JPanel(new GridLayout(4, 2, 10, 10));
+        JPanel encryptionPanel = new JPanel(new GridBagLayout());;
         encryptionPanel.setBorder(BorderFactory.createTitledBorder("加密设置"));
 
         JLabel algorithmLabel = new JLabel("选择加密算法:");
+        algorithmLabel.setPreferredSize(uniformLabelSize);
+        algorithmLabel.setHorizontalAlignment(SwingConstants.LEFT);
         JComboBox<String> algorithmCombo = new JComboBox<>(new String[]{"DES", "AES", "RSA"});
+        //algorithmCombo.setPreferredSize(uniformComboSize);
         JLabel keyLabel = new JLabel("密钥输入:");
-        JTextField keyField = new JTextField();
+        keyLabel.setPreferredSize(uniformLabelSize);
+        JTextArea keyField = new JTextArea(1, 20);
+        JScrollPane keyScrollPane = new JScrollPane(keyField);
+        keyScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        keyScrollPane.setPreferredSize(uniformFieldSize);
+        
+        
         JButton generateKeyButton = new JButton("生成密钥");
-        JButton importKeyButton = new JButton("导入密钥");
-        JButton generateRSAKeysButton = new JButton("生成公私钥对");
+        generateKeyButton.setPreferredSize(uniformButtonSize);
+        JLabel rsaKeyLabel = new JLabel("RSA算法");
+        JButton importKeyButton = new JButton("导入公私钥");
+        importKeyButton.setPreferredSize(uniformButtonSize);
+        JButton generateRSAKeysButton = new JButton("生成公私钥");
+        generateRSAKeysButton.setPreferredSize(uniformButtonSize);
+        
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        encryptionPanel.add(algorithmLabel, gbc);
+        gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1;
+        gbc.gridwidth = 2;
+        encryptionPanel.add(algorithmCombo, gbc);
 
-        encryptionPanel.add(algorithmLabel);
-        encryptionPanel.add(algorithmCombo);
-        encryptionPanel.add(keyLabel);
-        encryptionPanel.add(keyField);
-        encryptionPanel.add(generateKeyButton);
-        encryptionPanel.add(importKeyButton);
-        encryptionPanel.add(generateRSAKeysButton);
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
+        encryptionPanel.add(keyLabel, gbc);
+        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 1;
+        gbc.gridwidth = 1;
+        encryptionPanel.add(keyScrollPane, gbc);
+        gbc.gridx = 2; gbc.gridy = 1; gbc.weightx = 0;
+        encryptionPanel.add(generateKeyButton, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
+        gbc.gridwidth = 1; // 占两列
+        encryptionPanel.add(rsaKeyLabel, gbc);
+        gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 1;
+        gbc.gridwidth = 1; // 占两列
+        encryptionPanel.add(importKeyButton, gbc);
+        gbc.gridx = 2; gbc.gridy = 2; gbc.weightx = 0;
+        gbc.gridwidth = 1; // 占两列
+        encryptionPanel.add(generateRSAKeysButton, gbc);
         
         algorithmCombo.addActionListener(e -> {
             String selectedAlgorithm = (String) algorithmCombo.getSelectedItem();
@@ -344,8 +489,8 @@ public class EncryptionTool {
 
         generateKeyButton.addActionListener(e -> {
         	String algorithm = (String) algorithmCombo.getSelectedItem();
-        	long seed = 123456L;  // 随机种子
-        	// long seed = System.currentTimeMillis();  // 当前时间戳作为种子
+        	//long seed = 123456L;  // 随机种子
+        	long seed = System.currentTimeMillis();  // 当前时间戳作为种子
 
             if ("DES".equals(algorithm)) {
                 String desKey = RandomKey.generateDESKey(seed); // 自定义的生成 DES 密钥的函数
@@ -375,15 +520,26 @@ public class EncryptionTool {
 	    });      
 
         // 密钥分发设置面板        
-        JPanel keyEncryptPanel = new JPanel(new GridLayout(1, 3, 10, 10));
+        JPanel keyEncryptPanel = new JPanel(new GridBagLayout());;
         keyEncryptPanel.setBorder(BorderFactory.createTitledBorder("密钥加密设置"));
 
         JLabel keyEncryptLabel = new JLabel("密钥分发密钥:");
-        JTextField keyEncryptField = new JTextField();
+        keyEncryptLabel.setPreferredSize(uniformLabelSize);
+        keyEncryptLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        JTextArea keyEncryptField = new JTextArea(1, 20);
+        JScrollPane keyEncryptScrollPane = new JScrollPane(keyEncryptField);
+        keyEncryptScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        keyEncryptScrollPane.setPreferredSize(uniformFieldSize);
+        
         JButton keyEncryptButton = new JButton("导入密钥");
-        keyEncryptPanel.add(keyEncryptLabel);
-        keyEncryptPanel.add(keyEncryptField);
-        keyEncryptPanel.add(keyEncryptButton);
+        keyEncryptButton.setPreferredSize(uniformButtonSize);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        keyEncryptPanel.add(keyEncryptLabel, gbc);
+        gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1; gbc.weighty = 1;
+        keyEncryptPanel.add(keyEncryptScrollPane, gbc);
+        gbc.gridx = 2; gbc.gridy = 0; gbc.weightx = 0;
+        keyEncryptPanel.add(keyEncryptButton, gbc);
+        
         
         keyEncryptButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
@@ -398,6 +554,17 @@ public class EncryptionTool {
             }
         });
         
+        // 添加面板到主面板
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 0; gbc.fill = GridBagConstraints.HORIZONTAL;
+        mainPanel.add(inputPanel, gbc);
+        gbc.gridy++;
+        mainPanel.add(hashPanel, gbc);
+        gbc.gridy++;
+        mainPanel.add(signaturePanel, gbc);
+        gbc.gridy++;
+        mainPanel.add(encryptionPanel, gbc);
+        gbc.gridy++;
+        mainPanel.add(keyEncryptPanel, gbc);
         
         // 按钮面板
         JPanel buttonPanel = new JPanel();
@@ -415,7 +582,7 @@ public class EncryptionTool {
         		inputData = inputString.getBytes();      	
         	}
         	else {
-        		String filePath = fileSelectButton.getText();
+        		String filePath = inputContentField.getText();
         	    try {
         	        inputData = Files.readAllBytes(Paths.get(filePath));
         	    } catch (IOException e1) {
@@ -439,11 +606,10 @@ public class EncryptionTool {
         	byte[] inputData;
         	if (inputType.equals("String")) {
         		String inputString = inputContentField.getText();
-        		System.out.println("encrypted message:\n" + (new String(inputString)));
         		inputData = utils.Utils.base64ToByteArray(inputString);
         	}
         	else {
-        		String filePath = fileSelectButton.getText();
+        		String filePath = inputContentField.getText();
         	    try {
         	        inputData = Files.readAllBytes(Paths.get(filePath));
         	    } catch (IOException e1) {
@@ -468,22 +634,9 @@ public class EncryptionTool {
             signatureKeyField.setText("");
             keyEncryptField.setText("");
         });
-
-        // 布局整体
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         
-        mainPanel.add(inputPanel);
-        mainPanel.add(hashPanel);
-        mainPanel.add(signaturePanel);
-        mainPanel.add(encryptionPanel);
-        mainPanel.add(keyEncryptPanel);
-        
-        
+        // 滚动面板
         JScrollPane scrollPane = new JScrollPane(mainPanel);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        //scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-
         frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(buttonPanel, BorderLayout.SOUTH);
         frame.setVisible(true);
